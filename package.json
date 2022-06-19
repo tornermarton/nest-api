@@ -1,0 +1,48 @@
+{
+  "name": "@balit/nest-api",
+  "version": "0.0.9",
+  "description": "Common tools for creating an API with NestJS",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "rimraf dist && tsc",
+    "prepublish": "npm run build",
+    "publish": "npm publish --access public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tornermarton/nest-api.git"
+  },
+  "author": "Márton Torner",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/tornermarton/nest-api/issues"
+  },
+  "homepage": "https://github.com/tornermarton/nest-api#readme",
+  "peerDependencies": {
+    "@nestjs/common": "^8.0.0",
+    "@nestjs/core": "^8.0.0",
+    "class-transformer": "^0.4.0",
+    "class-validator": "^0.13.1"
+  },
+  "dependencies": {
+    "express": "^4.18.1",
+    "http-status-codes": "^2.2.0",
+    "lodash": "^4.17.21",
+    "reflect-metadata": "^0.1.13",
+    "rimraf": "^3.0.2",
+    "rxjs": "^7.2.0",
+    "typescript": "^4.7.4"
+  },
+  "devDependencies": {
+    "@types/lodash": "^4.14.182",
+    "@types/node": "^18.0.0",
+    "@typescript-eslint/eslint-plugin": "^5.28.0",
+    "@typescript-eslint/parser": "^5.28.0",
+    "eslint": "^8.18.0",
+    "eslint-config-prettier": "8.5.0",
+    "eslint-plugin-prettier": "^4.0.0",
+    "prettier": "^2.7.1"
+  }
+}
