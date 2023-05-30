@@ -1,6 +1,6 @@
 import { Owned } from './owned.interface';
 import { Timestamped } from './timestamped.interface';
 
-export interface BaseEntity extends Owned, Timestamped {
+export interface Entity extends Owned, Timestamped {
   id: string;
 }

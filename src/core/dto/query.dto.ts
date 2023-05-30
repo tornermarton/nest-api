@@ -1,19 +1,22 @@
-import { IsInt, IsOptional, Min, ValidateNested } from 'class-validator';
+import 'reflect-metadata';
 import { Transform, Type } from 'class-transformer';
-import { NotImplementedException } from '@nestjs/common';
+import { IsInt, IsOptional, Min, ValidateNested } from 'class-validator';
 
 export class PageDto {
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  @Type(() => Number)
-  readonly limit: number = 0;
+  public static DEFAULT_LIMIT = 100;
+  public static DEFAULT_OFFSET = 0;
 
   @IsOptional()
   @IsInt()
   @Min(0)
   @Type(() => Number)
-  readonly offset: number = 0;
+  public readonly limit: number = PageDto.DEFAULT_LIMIT;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Type(() => Number)
+  public readonly offset: number = PageDto.DEFAULT_OFFSET;
 }
 
 export type SortDto = { [key: string]: 1 | -1 };
@@ -33,8 +36,7 @@ export type FilterDto = { [key: string]: string[] };
 
 function transformFilterDto(s: object | string): FilterDto {
   if (typeof s === 'string') {
-    // TODO: parse string expression to filter expression
-    throw new NotImplementedException();
+    return { filter: [s] };
   }
 
   return Object.keys(s).reduce((acc, curr) => {
@@ -45,16 +47,24 @@ function transformFilterDto(s: object | string): FilterDto {
 }
 
 export class QueryDto {
+  public static DEFAULT_SORT: SortDto = {};
+  public static DEFAULT_FILTER: FilterDto = {};
+  public static DEFAULT_EXPAND: string[] = [];
+
   @IsOptional()
   @Type(() => PageDto)
   @ValidateNested()
-  readonly page: PageDto = new PageDto();
+  public readonly page: PageDto = new PageDto();
 
   @IsOptional()
   @Transform(({ value }) => transformSortDto(value))
-  readonly sort: SortDto = {};
+  public readonly sort: SortDto = QueryDto.DEFAULT_SORT;
 
   @IsOptional()
   @Transform(({ value }) => transformFilterDto(value))
-  readonly filter: FilterDto = {};
+  public readonly filter: FilterDto = QueryDto.DEFAULT_FILTER;
+
+  @IsOptional()
+  @Transform(({ value }) => value.split(','))
+  public readonly expand: string[] = QueryDto.DEFAULT_EXPAND;
 }
