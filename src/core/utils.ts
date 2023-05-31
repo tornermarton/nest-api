@@ -1,3 +1,4 @@
+import { parse } from 'qs';
 import { v4 as uuidv4 } from 'uuid';
 
 export function createGlobalApiPrefix(name: string, version: string): string {
@@ -8,3 +9,6 @@ export function uuid(): string {
   // eslint-disable-next-line @typescript-eslint/no-unsafe-call
   return uuidv4() as string;
 }
+
+export const queryParser = (q): object =>
+  parse(q, { ignoreQueryPrefix: true, comma: true });

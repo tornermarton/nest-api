@@ -39,8 +39,10 @@ function processQueryErrors(
 
 export const QUERY_VALIDATION_PIPE: ValidationPipe = new ValidationPipe({
   transform: true,
+  transformOptions: { exposeDefaultValues: true },
   whitelist: true,
   forbidNonWhitelisted: true,
+  validateCustomDecorators: true,
   exceptionFactory: (errors: ValidationError[]): HttpException =>
     new BadRequestException({ errors: processQueryErrors(errors) }),
 });
@@ -71,8 +73,10 @@ function processBodyErrors(
 
 export const BODY_VALIDATION_PIPE: ValidationPipe = new ValidationPipe({
   transform: true,
+  transformOptions: { exposeDefaultValues: true },
   whitelist: true,
   forbidNonWhitelisted: true,
+  validateCustomDecorators: true,
   exceptionFactory: (errors: ValidationError[]): HttpException =>
     new UnprocessableEntityException({ errors: processBodyErrors(errors) }),
 });

@@ -1,17 +1,28 @@
 import 'reflect-metadata';
-import { Transform, Type } from 'class-transformer';
-import { IsInt, IsOptional, Min, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
+import {
+  IsInt,
+  IsObject,
+  IsOptional,
+  IsString,
+  Min,
+  ValidateNested,
+} from 'class-validator';
+
+import { ApiQueryPropertyOptional } from '../../decorators';
 
 export class PageDto {
   public static DEFAULT_LIMIT = 100;
   public static DEFAULT_OFFSET = 0;
 
+  @ApiQueryPropertyOptional()
   @IsOptional()
   @IsInt()
   @Min(0)
   @Type(() => Number)
   public readonly limit: number = PageDto.DEFAULT_LIMIT;
 
+  @ApiQueryPropertyOptional()
   @IsOptional()
   @IsInt()
   @Min(0)
@@ -20,9 +31,8 @@ export class PageDto {
 }
 
 export type SortDto = { [key: string]: 1 | -1 };
-
-function transformSortDto(s: string): SortDto {
-  return s.split(',').reduce((acc, curr) => {
+function transformSortDto(sort: string[]): SortDto {
+  return sort.reduce((acc, curr) => {
     if (curr.startsWith('-')) {
       acc[curr.substring(1)] = -1;
     } else {
@@ -32,39 +42,25 @@ function transformSortDto(s: string): SortDto {
   }, {} as SortDto);
 }
 
-export type FilterDto = { [key: string]: string[] };
-
-function transformFilterDto(s: object | string): FilterDto {
-  if (typeof s === 'string') {
-    return { filter: [s] };
-  }
-
-  return Object.keys(s).reduce((acc, curr) => {
-    acc[curr] = s[curr].split(',');
-
-    return acc;
-  }, {} as FilterDto);
-}
-
-export class QueryDto {
-  public static DEFAULT_SORT: SortDto = {};
-  public static DEFAULT_FILTER: FilterDto = {};
+export class QueryDto<T> {
+  public static DEFAULT_SORT: string[] = [];
+  public static DEFAULT_FILTER: Record<any, string[]> = {};
   public static DEFAULT_EXPAND: string[] = [];
 
   @IsOptional()
   @Type(() => PageDto)
   @ValidateNested()
-  public readonly page: PageDto = new PageDto();
+  public readonly page?: PageDto = new PageDto();
 
   @IsOptional()
-  @Transform(({ value }) => transformSortDto(value))
-  public readonly sort: SortDto = QueryDto.DEFAULT_SORT;
+  @IsString({ each: true })
+  public readonly sort?: string[] = QueryDto.DEFAULT_SORT;
 
   @IsOptional()
-  @Transform(({ value }) => transformFilterDto(value))
-  public readonly filter: FilterDto = QueryDto.DEFAULT_FILTER;
+  @IsObject()
+  public readonly filter?: Record<keyof T, string[]> = QueryDto.DEFAULT_FILTER;
 
   @IsOptional()
-  @Transform(({ value }) => value.split(','))
-  public readonly expand: string[] = QueryDto.DEFAULT_EXPAND;
+  @IsString({ each: true })
+  public readonly expand?: string[] = QueryDto.DEFAULT_EXPAND;
 }
