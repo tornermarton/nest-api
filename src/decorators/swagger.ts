@@ -1,38 +1,14 @@
 import { applyDecorators, Type } from '@nestjs/common';
 import {
-  ApiProperty,
   ApiResponse,
   ApiResponseOptions,
   getSchemaPath,
 } from '@nestjs/swagger';
-import {
-  ParameterObject,
-  ReferenceObject,
-} from '@nestjs/swagger/dist/interfaces/open-api-spec.interface';
+import { ParameterObject } from '@nestjs/swagger/dist/interfaces/open-api-spec.interface';
 
+import { SWAGGER_API_PARAMETERS_METADATA_KEY } from './constants';
+import { PageDto } from '../core';
 import { EntityApiResponse, PagedApiResponse } from '../response';
-
-class QueryDecoratorSwaggerParameters {
-  public style?: string;
-  public schema?: ReferenceObject;
-}
-
-type SwaggerDecoratorParams = Parameters<typeof ApiProperty>;
-type SwaggerDecoratorMetadata = SwaggerDecoratorParams[0];
-type ApiQueryElementDecoratorMetadata = SwaggerDecoratorMetadata &
-  QueryDecoratorSwaggerParameters;
-
-// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-export const ApiQueryProperty = (params?: ApiQueryElementDecoratorMetadata) => {
-  return ApiProperty(params);
-};
-
-// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-export const ApiQueryPropertyOptional = (
-  params?: ApiQueryElementDecoratorMetadata,
-) => {
-  return ApiProperty({ required: false, ...params });
-};
 
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export const NestApiQuery = <TModel extends Type>(
@@ -43,8 +19,11 @@ export const NestApiQuery = <TModel extends Type>(
     key: string | symbol,
     descriptor: PropertyDescriptor,
   ) => {
-    const name = 'swagger/apiParameters';
-    const parameters = Reflect.getMetadata(name, descriptor.value) || [];
+    const parameters =
+      Reflect.getMetadata(
+        SWAGGER_API_PARAMETERS_METADATA_KEY,
+        descriptor.value,
+      ) ?? [];
     const query: ParameterObject[] = [
       {
         name: 'page',
@@ -53,8 +32,8 @@ export const NestApiQuery = <TModel extends Type>(
         style: 'deepObject',
         schema: {
           properties: {
-            limit: { type: 'number' },
-            offset: { type: 'number' },
+            limit: { type: 'number', default: PageDto.DEFAULT_LIMIT },
+            offset: { type: 'number', default: PageDto.DEFAULT_OFFSET },
           },
         },
       },
@@ -62,6 +41,8 @@ export const NestApiQuery = <TModel extends Type>(
         name: 'sort',
         in: 'query',
         required: false,
+        style: 'form',
+        explode: false,
         schema: {
           type: 'array',
           items: {
@@ -82,6 +63,8 @@ export const NestApiQuery = <TModel extends Type>(
         name: 'expand',
         in: 'query',
         required: false,
+        style: 'form',
+        explode: false,
         schema: {
           type: 'array',
           items: {
@@ -91,7 +74,11 @@ export const NestApiQuery = <TModel extends Type>(
       },
     ];
 
-    Reflect.defineMetadata(name, [...parameters, ...query], descriptor.value);
+    Reflect.defineMetadata(
+      SWAGGER_API_PARAMETERS_METADATA_KEY,
+      [...parameters, ...query],
+      descriptor.value,
+    );
 
     return descriptor;
   };

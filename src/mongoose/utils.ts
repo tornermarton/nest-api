@@ -8,3 +8,14 @@ export function createTransform<T>(type: Type<T>): (d: T) => object {
     return instanceToPlain(obj, { excludeExtraneousValues: true });
   };
 }
+
+export function sortDtoToQuery(sort: string[]): Record<string, 1 | -1> {
+  return sort.reduce((acc, curr) => {
+    if (curr.startsWith('-')) {
+      acc[curr.substring(1)] = -1;
+    } else {
+      acc[curr] = 1;
+    }
+    return acc;
+  }, {});
+}

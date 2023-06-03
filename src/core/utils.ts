@@ -11,4 +11,7 @@ export function uuid(): string {
 }
 
 export const queryParser = (q): object =>
-  parse(q, { ignoreQueryPrefix: true, comma: true });
+  parse(q, {
+    ignoreQueryPrefix: true,
+    comma: true,
+  });

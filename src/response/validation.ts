@@ -15,26 +15,23 @@ function processQueryErrors(
 ): ResponseError[] {
   return errors
     .map((error) => {
-      if (typeof parameter === 'undefined') {
-        parameter = error.property;
-      } else {
-        parameter = `${parameter}.${error.property}`;
-      }
+      const parent = parameter ? `${parameter}.` : '';
+      const path = `${parent}${error.property}`;
 
-      const errors: ResponseError[] = Object.values(error.constraints).map(
-        (constraint) => ({
-          status: HttpStatus.BAD_REQUEST,
-          source: { parameter: parameter },
-          title: 'Invalid Query Parameter',
-          detail: constraint,
-        }),
-      );
+      const errors: ResponseError[] = Object.values(
+        error.constraints ?? {},
+      ).map((constraint) => ({
+        status: HttpStatus.BAD_REQUEST,
+        source: { parameter: path },
+        title: 'Invalid Query Parameter',
+        detail: constraint,
+      }));
 
-      errors.push(...processQueryErrors(error.children ?? [], parameter));
+      errors.push(...processQueryErrors(error.children ?? [], path));
 
       return errors;
     })
-    .reduce((acc, e) => [...acc, ...e], []);
+    .flat();
 }
 
 export const QUERY_VALIDATION_PIPE: ValidationPipe = new ValidationPipe({
@@ -53,18 +50,18 @@ function processBodyErrors(
 ): ResponseError[] {
   return errors
     .map((error) => {
-      const propertyPointer = `${pointer}/${error.property}`;
+      const path = `${pointer}/${error.property}`;
 
-      const errors: ResponseError[] = Object.values(error.constraints).map(
-        (constraint) => ({
-          status: HttpStatus.UNPROCESSABLE_ENTITY,
-          source: { pointer: propertyPointer },
-          title: 'Invalid Body Attribute',
-          detail: constraint,
-        }),
-      );
+      const errors: ResponseError[] = Object.values(
+        error.constraints ?? {},
+      ).map((constraint) => ({
+        status: HttpStatus.UNPROCESSABLE_ENTITY,
+        source: { pointer: path },
+        title: 'Invalid Body Attribute',
+        detail: constraint,
+      }));
 
-      errors.push(...processBodyErrors(error.children ?? [], propertyPointer));
+      errors.push(...processBodyErrors(error.children ?? [], path));
 
       return errors;
     })
