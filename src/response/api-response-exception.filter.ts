@@ -1,25 +1,56 @@
 import 'reflect-metadata';
+
 import {
   ArgumentsHost,
   Catch,
-  ExceptionFilter,
+  FactoryProvider,
   HttpException,
   HttpStatus,
   Logger,
+  RequestMethod,
 } from '@nestjs/common';
-import { HttpAdapterHost } from '@nestjs/core';
+import {
+  AbstractHttpAdapter,
+  APP_FILTER,
+  BaseExceptionFilter,
+} from '@nestjs/core';
+import { HttpAdapterHost } from '@nestjs/core/helpers/http-adapter-host';
 import { Request, Response } from 'express';
 import { getReasonPhrase } from 'http-status-codes';
 
 import { ErrorApiResponse, ResponseError, ResponseMeta } from './models';
 import { getCommonResponseLinks } from './utils';
 
+type ApiResponseExceptionFilterOptions = {
+  exclude: { path: string; method: RequestMethod }[];
+};
+
 @Catch()
-export class ApiResponseExceptionFilter<T> implements ExceptionFilter<T> {
+export class ApiResponseExceptionFilter<
+  T = unknown,
+> extends BaseExceptionFilter<T> {
+  public static forRoot<T = unknown>(
+    options?: ApiResponseExceptionFilterOptions,
+  ): FactoryProvider {
+    return {
+      provide: APP_FILTER,
+      useFactory: (
+        httpAdapterHost: HttpAdapterHost,
+        logger: Logger,
+      ): ApiResponseExceptionFilter<T> => {
+        return new ApiResponseExceptionFilter(httpAdapterHost, logger, options);
+      },
+      inject: [HttpAdapterHost, Logger],
+    };
+  }
+
   constructor(
-    private readonly httpAdapterHost: HttpAdapterHost,
+    protected override readonly httpAdapterHost: HttpAdapterHost,
     private readonly logger: Logger,
-  ) {}
+    private readonly options?: ApiResponseExceptionFilterOptions,
+  ) {
+    super();
+  }
 
   private getStatus(exception: T): number {
     return exception instanceof HttpException
@@ -31,29 +62,28 @@ export class ApiResponseExceptionFilter<T> implements ExceptionFilter<T> {
     return getReasonPhrase(status);
   }
 
+  private createGenericErrors(status: number, title: string): ResponseError[] {
+    return [
+      {
+        status: status,
+        title: title,
+      },
+    ];
+  }
+
   private getErrors(
     exception: T,
     status: number,
     title: string,
   ): ResponseError[] {
     if (!(exception instanceof HttpException)) {
-      return [
-        {
-          status: status,
-          title: title,
-        },
-      ];
+      return this.createGenericErrors(status, title);
     }
 
     const response: object | string = exception.getResponse();
 
     if (typeof response !== 'object') {
-      return [
-        {
-          status: status,
-          title: title,
-        },
-      ];
+      return this.createGenericErrors(status, title);
     }
 
     if ('errors' in response) {
@@ -84,11 +114,24 @@ export class ApiResponseExceptionFilter<T> implements ExceptionFilter<T> {
     }
   }
 
-  public catch(exception: T, host: ArgumentsHost): void {
-    this.log(exception);
-
+  public override catch(exception: T, host: ArgumentsHost): void {
+    const adapter: AbstractHttpAdapter = this.httpAdapterHost.httpAdapter;
     const request: Request = host.switchToHttp().getRequest<Request>();
     const response: Response = host.switchToHttp().getResponse<Response>();
+
+    const url: string = adapter.getRequestUrl(request);
+    const method: RequestMethod = adapter.getRequestMethod(request);
+
+    for (const e of this.options?.exclude) {
+      if (
+        e.path === url &&
+        (e.method === method || e.method === RequestMethod.ALL)
+      ) {
+        return super.catch(exception, host);
+      }
+    }
+
+    this.log(exception);
 
     const status: number = this.getStatus(exception);
     const reason: string = this.getReason(status);
@@ -105,6 +148,6 @@ export class ApiResponseExceptionFilter<T> implements ExceptionFilter<T> {
       links: getCommonResponseLinks(request),
     };
 
-    this.httpAdapterHost.httpAdapter.reply(response, body, status);
+    adapter.reply(response, body, status);
   }
 }

@@ -1,14 +1,25 @@
 import { applyDecorators, Type } from '@nestjs/common';
 import {
+  ApiBadRequestResponse,
+  ApiForbiddenResponse,
+  ApiNoContentResponse,
+  ApiNotFoundResponse,
   ApiResponse,
   ApiResponseOptions,
+  ApiServiceUnavailableResponse,
+  ApiUnauthorizedResponse,
+  ApiUnprocessableEntityResponse,
   getSchemaPath,
 } from '@nestjs/swagger';
 import { ParameterObject } from '@nestjs/swagger/dist/interfaces/open-api-spec.interface';
 
 import { SWAGGER_API_PARAMETERS_METADATA_KEY } from './constants';
 import { PageDto } from '../core';
-import { EntityApiResponse, PagedApiResponse } from '../response';
+import {
+  EntityApiResponse,
+  ErrorApiResponse,
+  PagedApiResponse,
+} from '../response';
 
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export const NestApiQuery = <TModel extends Type>(
@@ -85,7 +96,7 @@ export const NestApiQuery = <TModel extends Type>(
 };
 
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-export const EntityNestApiResponse = <TModel extends Type>(
+export const NestApiEntityResponse = <TModel extends Type>(
   model: TModel,
   options?: ApiResponseOptions,
 ) => {
@@ -111,7 +122,7 @@ export const EntityNestApiResponse = <TModel extends Type>(
 };
 
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-export const PagedNestApiResponse = <TModel extends Type>(
+export const NestApiPagedResponse = <TModel extends Type>(
   model: TModel,
   options?: ApiResponseOptions,
 ) => {
@@ -133,6 +144,80 @@ export const PagedNestApiResponse = <TModel extends Type>(
           },
         ],
       },
+    }),
+  );
+};
+
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+export const NestApiNoContentResponse = (options?: ApiResponseOptions) => {
+  return applyDecorators(
+    ApiNoContentResponse({
+      type: ErrorApiResponse,
+      ...options,
+    }),
+  );
+};
+
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+export const NestApiBadRequestResponse = (options?: ApiResponseOptions) => {
+  return applyDecorators(
+    ApiBadRequestResponse({
+      type: ErrorApiResponse,
+      ...options,
+    }),
+  );
+};
+
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+export const NestApiUnauthorizedResponse = (options?: ApiResponseOptions) => {
+  return applyDecorators(
+    ApiUnauthorizedResponse({
+      type: ErrorApiResponse,
+      ...options,
+    }),
+  );
+};
+
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+export const NestApiForbiddenResponse = (options?: ApiResponseOptions) => {
+  return applyDecorators(
+    ApiForbiddenResponse({
+      type: ErrorApiResponse,
+      ...options,
+    }),
+  );
+};
+
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+export const NestApiNotFoundResponse = (options?: ApiResponseOptions) => {
+  return applyDecorators(
+    ApiNotFoundResponse({
+      type: ErrorApiResponse,
+      ...options,
+    }),
+  );
+};
+
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+export const NestApiUnprocessableEntityResponse = (
+  options?: ApiResponseOptions,
+) => {
+  return applyDecorators(
+    ApiUnprocessableEntityResponse({
+      type: ErrorApiResponse,
+      ...options,
+    }),
+  );
+};
+
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+export const NestApiServiceUnavailableResponse = (
+  options?: ApiResponseOptions,
+) => {
+  return applyDecorators(
+    ApiServiceUnavailableResponse({
+      type: ErrorApiResponse,
+      ...options,
     }),
   );
 };

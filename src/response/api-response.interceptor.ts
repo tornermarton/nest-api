@@ -4,7 +4,11 @@ import {
   NestInterceptor,
   ExecutionContext,
   CallHandler,
+  FactoryProvider,
+  RequestMethod,
 } from '@nestjs/common';
+import { AbstractHttpAdapter, APP_INTERCEPTOR } from '@nestjs/core';
+import { HttpAdapterHost } from '@nestjs/core/helpers/http-adapter-host';
 import { Request, Response } from 'express';
 import { getReasonPhrase } from 'http-status-codes';
 import { Observable } from 'rxjs';
@@ -17,16 +21,52 @@ import {
   getPaging,
 } from './utils';
 
+type ApiResponseInterceptorOptions = {
+  exclude: { path: string; method: RequestMethod }[];
+};
+
 @Injectable()
 export class ApiResponseInterceptor<T>
   implements NestInterceptor<T, ApiResponse<T>>
 {
+  public static forRoot<T = unknown>(
+    options?: ApiResponseInterceptorOptions,
+  ): FactoryProvider {
+    return {
+      provide: APP_INTERCEPTOR,
+      useFactory: (
+        httpAdapterHost: HttpAdapterHost,
+      ): ApiResponseInterceptor<T> => {
+        return new ApiResponseInterceptor(httpAdapterHost, options);
+      },
+      inject: [HttpAdapterHost],
+    };
+  }
+
+  constructor(
+    private readonly httpAdapterHost: HttpAdapterHost,
+    private readonly options?: ApiResponseInterceptorOptions,
+  ) {}
+
   public intercept(
     context: ExecutionContext,
     next: CallHandler,
   ): Observable<ApiResponse<T>> {
+    const adapter: AbstractHttpAdapter = this.httpAdapterHost.httpAdapter;
     const request: Request = context.switchToHttp().getRequest<Request>();
     const response: Response = context.switchToHttp().getResponse<Response>();
+
+    const url: string = adapter.getRequestUrl(request);
+    const method: RequestMethod = adapter.getRequestMethod(request);
+
+    for (const e of this.options?.exclude) {
+      if (
+        e.path === url &&
+        (e.method === method || e.method === RequestMethod.ALL)
+      ) {
+        return next.handle();
+      }
+    }
 
     const status: number = response.statusCode;
     const reason: string = getReasonPhrase(status);
