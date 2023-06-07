@@ -2,12 +2,17 @@ import {
   BadRequestException,
   HttpException,
   HttpStatus,
+  ParseUUIDPipe,
   UnprocessableEntityException,
   ValidationError,
   ValidationPipe,
 } from '@nestjs/common';
 
 import { ResponseError } from './models';
+
+export const UUID_VALIDATION_PIPE: ParseUUIDPipe = new ParseUUIDPipe({
+  version: '4',
+});
 
 function processQueryErrors(
   errors: ValidationError[],
