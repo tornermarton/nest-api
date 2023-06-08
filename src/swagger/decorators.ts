@@ -13,13 +13,14 @@ import {
 } from '@nestjs/swagger';
 import { ParameterObject } from '@nestjs/swagger/dist/interfaces/open-api-spec.interface';
 
-import { SWAGGER_API_PARAMETERS_METADATA_KEY } from './constants';
-import { PageDto } from '../query';
+import { PageDto } from '@lib/query';
 import {
   EntityApiResponse,
   ErrorApiResponse,
   PagedApiResponse,
-} from '../response';
+} from '@lib/response';
+
+import { SWAGGER_API_PARAMETERS_METADATA_KEY } from './constants';
 
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export const NestApiQuery = <TModel extends Type>(
@@ -30,11 +31,11 @@ export const NestApiQuery = <TModel extends Type>(
     key: string | symbol,
     descriptor: PropertyDescriptor,
   ) => {
-    const parameters =
-      Reflect.getMetadata(
+    const parameters: ParameterObject[] =
+      (Reflect.getMetadata(
         SWAGGER_API_PARAMETERS_METADATA_KEY,
-        descriptor.value,
-      ) ?? [];
+        descriptor.value as object,
+      ) as ParameterObject[]) ?? [];
     const query: ParameterObject[] = [
       {
         name: 'page',
@@ -88,7 +89,7 @@ export const NestApiQuery = <TModel extends Type>(
     Reflect.defineMetadata(
       SWAGGER_API_PARAMETERS_METADATA_KEY,
       [...parameters, ...query],
-      descriptor.value,
+      descriptor.value as object,
     );
 
     return descriptor;

@@ -39,7 +39,9 @@ export function uuid(): string {
 }
 
 export const queryParser = (q): object =>
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-return
   parse(q, {
     ignoreQueryPrefix: true,
     comma: true,
+    interpretNumericEntities: true,
   });

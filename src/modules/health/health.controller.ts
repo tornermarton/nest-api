@@ -17,11 +17,12 @@ import {
 } from '@nestjs/terminus';
 import { catchError, from, Observable } from 'rxjs';
 
-import { ResponseError } from '../../response';
+import { isNotNullOrUndefined } from '@lib/core';
+import { ResponseError } from '@lib/response';
 import {
   NestApiEntityResponse,
   NestApiServiceUnavailableResponse,
-} from '../../swagger';
+} from '@lib/swagger';
 
 class Health implements HealthCheckResult {
   @ApiProperty()
@@ -68,19 +69,30 @@ export class HealthController {
           throw error;
         }
 
-        const response = error.getResponse();
+        const response: string | object = error.getResponse();
 
-        if (typeof response !== 'object' || !response.hasOwnProperty('error')) {
+        if (typeof response !== 'object' || !('error' in response)) {
           throw error;
         }
 
         const errors: ResponseError[] = Object.entries(
           (response as HealthCheckResult).error,
-        ).map(([name, obj]) => ({
-          status: HttpStatus.SERVICE_UNAVAILABLE,
-          title: `Service [${name}] unavailable`,
-          detail: obj['message'] ?? null,
-        }));
+        ).map(([name, obj]) => {
+          let detail: string | null = null;
+
+          if (
+            isNotNullOrUndefined(obj['message']) &&
+            typeof obj['message'] === 'string'
+          ) {
+            detail = obj['message'];
+          }
+
+          return {
+            status: HttpStatus.SERVICE_UNAVAILABLE,
+            title: `Service [${name}] unavailable`,
+            detail: detail,
+          };
+        });
 
         throw new ServiceUnavailableException({ errors });
       }),

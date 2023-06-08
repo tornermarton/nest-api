@@ -14,6 +14,8 @@ import { getReasonPhrase } from 'http-status-codes';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 
+import { isNotNullOrUndefined } from '@lib/core';
+
 import { ApiResponse, PagedResource, ResponseMeta } from './models';
 import {
   getCommonResponseLinks,
@@ -56,19 +58,23 @@ export class ApiResponseInterceptor<T>
     const request: Request = context.switchToHttp().getRequest<Request>();
     const response: Response = context.switchToHttp().getResponse<Response>();
 
-    const url: string = adapter.getRequestUrl(request);
-    const method: RequestMethod = adapter.getRequestMethod(request);
+    const url: string = adapter.getRequestUrl(request) as string;
+    const method: RequestMethod = adapter.getRequestMethod(
+      request,
+    ) as RequestMethod;
 
-    for (const e of this.options?.exclude) {
-      if (
-        e.path === url &&
-        (e.method === method || e.method === RequestMethod.ALL)
-      ) {
-        return next.handle();
+    if (isNotNullOrUndefined(this.options)) {
+      for (const e of this.options.exclude) {
+        if (
+          e.path === url &&
+          (e.method === method || e.method === RequestMethod.ALL)
+        ) {
+          return next.handle();
+        }
       }
     }
 
-    const status: number = response.statusCode;
+    const status: number = response.statusCode as number;
     const reason: string = getReasonPhrase(status);
     const meta: ResponseMeta = {
       status: status,
@@ -82,7 +88,7 @@ export class ApiResponseInterceptor<T>
             meta: meta,
             data: resource.items,
             links: getPagedResponseLinks(request, resource.total),
-            paging: getPaging(request.query, resource.total),
+            paging: getPaging(request, resource.total),
           };
         } else {
           return {

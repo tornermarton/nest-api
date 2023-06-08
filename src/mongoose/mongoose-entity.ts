@@ -9,6 +9,7 @@ export class MongooseEntity implements Entity {
   @Prop({ required: true, default: uuid })
   public readonly _id: string;
   // These are just dummy methods for transformation
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
   public set id(v: string) {}
   @Expose()
   @ApiProperty({ description: 'The UUID of the resource' })

@@ -18,6 +18,8 @@ import { HttpAdapterHost } from '@nestjs/core/helpers/http-adapter-host';
 import { Request, Response } from 'express';
 import { getReasonPhrase } from 'http-status-codes';
 
+import { isNotNullOrUndefined } from '@lib/core';
+
 import { ErrorApiResponse, ResponseError, ResponseMeta } from './models';
 import { getCommonResponseLinks } from './utils';
 
@@ -88,12 +90,16 @@ export class ApiResponseExceptionFilter<
 
     if ('errors' in response) {
       // The validation errors are already in the correct format
-      return response['errors'];
+      return response['errors'] as ResponseError[];
     }
 
     let detail: string | null = null;
 
-    if (status < 500 && 'message' in response) {
+    if (
+      status < 500 &&
+      'message' in response &&
+      typeof response['message'] === 'string'
+    ) {
       detail = response['message'];
     }
 
@@ -119,15 +125,19 @@ export class ApiResponseExceptionFilter<
     const request: Request = host.switchToHttp().getRequest<Request>();
     const response: Response = host.switchToHttp().getResponse<Response>();
 
-    const url: string = adapter.getRequestUrl(request);
-    const method: RequestMethod = adapter.getRequestMethod(request);
+    const url: string = adapter.getRequestUrl(request) as string;
+    const method: RequestMethod = adapter.getRequestMethod(
+      request,
+    ) as RequestMethod;
 
-    for (const e of this.options?.exclude) {
-      if (
-        e.path === url &&
-        (e.method === method || e.method === RequestMethod.ALL)
-      ) {
-        return super.catch(exception, host);
+    if (isNotNullOrUndefined(this.options)) {
+      for (const e of this.options.exclude) {
+        if (
+          e.path === url &&
+          (e.method === method || e.method === RequestMethod.ALL)
+        ) {
+          return super.catch(exception, host);
+        }
       }
     }
 
