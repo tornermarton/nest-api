@@ -14,14 +14,13 @@ import { getReasonPhrase } from 'http-status-codes';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 
-import { isNotNullOrUndefined } from '@lib/core';
-
 import { ApiResponse, PagedResource, ResponseMeta } from './models';
 import {
   getCommonResponseLinks,
   getPagedResponseLinks,
   getPaging,
 } from './utils';
+import { isNotNullOrUndefined } from '../core';
 
 type ApiResponseInterceptorOptions = {
   exclude: { path: string; method: RequestMethod }[];

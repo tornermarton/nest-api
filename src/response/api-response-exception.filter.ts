@@ -18,10 +18,9 @@ import { HttpAdapterHost } from '@nestjs/core/helpers/http-adapter-host';
 import { Request, Response } from 'express';
 import { getReasonPhrase } from 'http-status-codes';
 
-import { isNotNullOrUndefined } from '@lib/core';
-
 import { ErrorApiResponse, ResponseError, ResponseMeta } from './models';
 import { getCommonResponseLinks } from './utils';
+import { isNotNullOrUndefined } from '../core';
 
 type ApiResponseExceptionFilterOptions = {
   exclude: { path: string; method: RequestMethod }[];

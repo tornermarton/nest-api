@@ -1,10 +1,9 @@
 import { Request } from 'express';
 import { parse, stringify } from 'qs';
 
-import { isNotNullOrUndefined } from '@lib/core';
-import { IQueryDto } from '@lib/query';
-
 import { CommonResponseLinks, PagedResponseLinks, Paging } from './models';
+import { isNotNullOrUndefined } from '../core';
+import { IQueryDto } from '../query';
 
 function getSelfLink(request: Request): string {
   // eslint-disable-next-line @typescript-eslint/restrict-template-expressions

@@ -17,12 +17,12 @@ import {
 } from '@nestjs/terminus';
 import { catchError, from, Observable } from 'rxjs';
 
-import { isNotNullOrUndefined } from '@lib/core';
-import { ResponseError } from '@lib/response';
+import { isNotNullOrUndefined } from '../../core';
+import { ResponseError } from '../../response';
 import {
   NestApiEntityResponse,
   NestApiServiceUnavailableResponse,
-} from '@lib/swagger';
+} from '../../swagger';
 
 class Health implements HealthCheckResult {
   @ApiProperty()

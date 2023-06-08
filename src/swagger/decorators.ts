@@ -13,14 +13,13 @@ import {
 } from '@nestjs/swagger';
 import { ParameterObject } from '@nestjs/swagger/dist/interfaces/open-api-spec.interface';
 
-import { PageDto } from '@lib/query';
+import { SWAGGER_API_PARAMETERS_METADATA_KEY } from './constants';
+import { PageDto } from '../query';
 import {
   EntityApiResponse,
   ErrorApiResponse,
   PagedApiResponse,
-} from '@lib/response';
-
-import { SWAGGER_API_PARAMETERS_METADATA_KEY } from './constants';
+} from '../response';
 
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export const NestApiQuery = <TModel extends Type>(

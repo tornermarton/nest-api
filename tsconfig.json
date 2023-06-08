@@ -21,9 +21,6 @@
     "noPropertyAccessFromIndexSignature": true,
     "noImplicitReturns": true,
     "esModuleInterop": true,
-    "removeComments": true,
-    "paths": {
-      "@lib/*": ["src/*"]
-    }
+    "removeComments": true
   }
 }
