@@ -1,9 +1,9 @@
+import { plainToInstance } from 'class-transformer';
 import { Request } from 'express';
 import { parse, stringify } from 'qs';
 
 import { CommonResponseLinks, PagedResponseLinks, Paging } from './models';
-import { isNotNullOrUndefined } from '../core';
-import { IQueryDto } from '../query';
+import { IQueryDto, PageDto } from '../query';
 
 function getSelfLink(request: Request): string {
   // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
@@ -17,27 +17,12 @@ export function getCommonResponseLinks(request: Request): CommonResponseLinks {
 }
 
 export function getPaging(request: Request, total?: number): Paging {
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-  const query: IQueryDto<unknown, unknown, never> = request.query;
+  const page: PageDto = plainToInstance(
+    PageDto,
+    request.query.page ?? { limit: 100, offset: 0 },
+  );
 
-  let limit = 100;
-  let offset = 0;
-
-  if (
-    isNotNullOrUndefined(query.page) &&
-    isNotNullOrUndefined(query.page.limit)
-  ) {
-    limit = query.page.limit;
-  }
-
-  if (
-    isNotNullOrUndefined(query.page) &&
-    isNotNullOrUndefined(query.page.offset)
-  ) {
-    offset = query.page.offset;
-  }
-
-  return { limit, offset, total };
+  return { limit: page.limit, offset: page.offset, total };
 }
 
 type Mutable<Type> = {

@@ -43,5 +43,4 @@ export const queryParser = (q): object =>
   parse(q, {
     ignoreQueryPrefix: true,
     comma: true,
-    interpretNumericEntities: true,
   });
