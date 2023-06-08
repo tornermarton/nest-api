@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
-export class PagedResource<T = any> {
+export class PagedResource<T = unknown> {
   constructor(public readonly items: T[], public readonly total?: number) {}
 }
 

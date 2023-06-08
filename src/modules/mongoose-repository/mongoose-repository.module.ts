@@ -1,12 +1,10 @@
-import * as console from 'console';
-
 import { DynamicModule, FactoryProvider, Module } from '@nestjs/common';
 import { getConnectionToken, MongooseModule } from '@nestjs/mongoose';
 import { ModelDefinition } from '@nestjs/mongoose/dist/interfaces';
 import { Connection } from 'mongoose';
 
-import { MongooseRepository } from './repository';
-import { getRepositoryToken } from './utils';
+import { MongooseRepository } from './mongoose-repository';
+import { getRepositoryToken } from '../../repository';
 
 type MongooseConnection = {
   host: string;
@@ -48,8 +46,6 @@ export class MongooseRepositoryModule {
       // TODO: typing
       useFactory: (connection: Connection): MongooseRepository<unknown> => {
         const model = connection.model(m.name, m.schema, m.collection);
-
-        console.log(getRepositoryToken(m.name), model);
 
         return new MongooseRepository(model);
       },

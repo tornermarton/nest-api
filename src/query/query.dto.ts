@@ -1,5 +1,3 @@
-import 'reflect-metadata';
-
 import { Type } from '@nestjs/common';
 import { Type as TransformType } from 'class-transformer';
 import {

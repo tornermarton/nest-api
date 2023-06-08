@@ -14,7 +14,7 @@ import {
 import { ParameterObject } from '@nestjs/swagger/dist/interfaces/open-api-spec.interface';
 
 import { SWAGGER_API_PARAMETERS_METADATA_KEY } from './constants';
-import { PageDto } from '../core';
+import { PageDto } from '../query';
 import {
   EntityApiResponse,
   ErrorApiResponse,
