@@ -102,6 +102,7 @@ export const NestApiEntityResponse = <TModel extends Type>(
 ) => {
   return applyDecorators(
     ApiResponse({
+      status: 200,
       ...options,
       schema: {
         title: `EntityResponseOf${model.name}`,
@@ -128,6 +129,7 @@ export const NestApiPagedResponse = <TModel extends Type>(
 ) => {
   return applyDecorators(
     ApiResponse({
+      status: 200,
       ...options,
       schema: {
         title: `PagedResponseOf${model.name}`,
@@ -152,7 +154,6 @@ export const NestApiPagedResponse = <TModel extends Type>(
 export const NestApiNoContentResponse = (options?: ApiResponseOptions) => {
   return applyDecorators(
     ApiNoContentResponse({
-      type: ErrorApiResponse,
       ...options,
     }),
   );

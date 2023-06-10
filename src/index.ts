@@ -1,6 +1,5 @@
 import 'reflect-metadata';
 
-export * from './auth';
 export * from './core';
 export * from './modules';
 export * from './mongoose';

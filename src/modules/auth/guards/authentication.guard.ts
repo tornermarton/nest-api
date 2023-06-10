@@ -7,7 +7,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
 
-import { isUndefined } from '../../core';
+import { isUndefined } from '../../../core';
 import { AUTH_PASSPORT_HEADER } from '../constants';
 
 @Injectable()
