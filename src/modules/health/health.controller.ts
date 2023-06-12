@@ -58,7 +58,7 @@ export class HealthController {
         (): Promise<HealthIndicatorResult> =>
           this.disk.checkStorage('storage', {
             path: '/',
-            thresholdPercent: 0.5,
+            thresholdPercent: 0.9,
           }),
         (): Promise<HealthIndicatorResult> =>
           this.mongoose.pingCheck('mongodb'),
