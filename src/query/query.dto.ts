@@ -1,5 +1,5 @@
 import { Type } from '@nestjs/common';
-import { Type as TransformType } from 'class-transformer';
+import { Transform, Type as TransformType } from 'class-transformer';
 import {
   IsIn,
   IsInt,
@@ -11,8 +11,8 @@ import {
 } from 'class-validator';
 
 export class PageDto {
-  public static DEFAULT_LIMIT = 100;
-  public static DEFAULT_OFFSET = 0;
+  public static DEFAULT_LIMIT: number = 100;
+  public static DEFAULT_OFFSET: number = 0;
 
   @IsOptional()
   @IsInt()
@@ -32,10 +32,10 @@ export interface IQueryDto<
   TFilter,
   TExpand extends Extract<keyof TModel, string>,
 > {
-  readonly page?: PageDto;
-  readonly sort?: string[];
-  readonly expand?: TExpand[];
-  readonly filter?: TFilter;
+  readonly page: PageDto;
+  readonly filter: TFilter;
+  readonly expand: TExpand[];
+  readonly sort: string[];
 }
 
 export type SortDefinition<
@@ -47,21 +47,14 @@ export type SortDefinition<
   desc: boolean;
 };
 
-export function QueryDto<
+function parseSortDefinitions<
   TModel,
   TSort extends Extract<keyof TModel, string>,
-  TFilter,
-  TExpand extends Extract<keyof TModel, string>,
->(
-  type: Type<TModel>,
-  sort: readonly SortDefinition<TModel, TSort>[],
-  filter: Type<TFilter>,
-  expand: readonly TExpand[],
-): Type<IQueryDto<TModel, TFilter, TExpand>> {
+>(definitions: readonly SortDefinition<TModel, TSort>[]): string[] {
   // TODO: maybe this can be done better, but this is good for now
-  const sortValues = sort
+  return definitions
     .map((d) => {
-      const values = [];
+      const values: string[] = [];
       if (d.asc) {
         values.push(d.key);
       }
@@ -73,29 +66,43 @@ export function QueryDto<
       return values;
     })
     .flat();
+}
 
+export function QueryDto<
+  TModel,
+  TFilter,
+  TExpand extends Extract<keyof TModel, string>,
+  TSort extends Extract<keyof TModel, string>,
+>(
+  type: Type<TModel>,
+  filter: Type<TFilter>,
+  expand: readonly TExpand[],
+  sort: readonly SortDefinition<TModel, TSort>[],
+): Type<IQueryDto<TModel, TFilter, TExpand>> {
   class QueryDtoClass implements IQueryDto<TModel, TFilter, TExpand> {
     @IsOptional()
     @ValidateNested()
     @TransformType(() => PageDto)
-    public readonly page?: PageDto = new PageDto();
-
-    @IsOptional()
-    @IsString({ each: true })
-    @IsIn(sortValues)
-    public readonly sort?: string[];
-    // TODO: type sort somehow
-
-    @IsOptional()
-    @IsString({ each: true })
-    @IsIn(expand)
-    public readonly expand?: TExpand[];
+    public readonly page: PageDto = new PageDto();
 
     @IsOptional()
     @IsObject()
     @ValidateNested()
     @TransformType(() => filter)
-    public readonly filter?: TFilter = {} as TFilter;
+    public readonly filter: TFilter = {} as TFilter;
+
+    @IsOptional()
+    @IsString({ each: true })
+    @IsIn(expand, { each: true })
+    @Transform(({ value }) => (typeof value === 'string' ? [value] : value))
+    public readonly expand: TExpand[] = [];
+
+    @IsOptional()
+    @IsString({ each: true })
+    @IsIn(parseSortDefinitions(sort), { each: true })
+    @Transform(({ value }) => (typeof value === 'string' ? [value] : value))
+    // TODO: type sort somehow
+    public readonly sort: string[] = [];
   }
 
   return QueryDtoClass;

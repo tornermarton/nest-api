@@ -1,7 +1,10 @@
-import { DynamicModule, FactoryProvider, Module } from '@nestjs/common';
-import { getConnectionToken, MongooseModule } from '@nestjs/mongoose';
-import { ModelDefinition } from '@nestjs/mongoose/dist/interfaces';
-import { Connection } from 'mongoose';
+import { DynamicModule, FactoryProvider, Module, Type } from '@nestjs/common';
+import {
+  getConnectionToken,
+  MongooseModule,
+  SchemaFactory,
+} from '@nestjs/mongoose';
+import { Connection, Model, Schema } from 'mongoose';
 
 import { MongooseRepository } from './mongoose-repository';
 import { getRepositoryToken } from '../../repository';
@@ -19,7 +22,7 @@ type MongooseRepositoryModuleRootOptions = {
 };
 
 type MongooseRepositoryModuleFeatureOptions = {
-  models: ModelDefinition[];
+  entities: Type[];
 };
 
 @Module({})
@@ -41,16 +44,18 @@ export class MongooseRepositoryModule {
   public static forFeature(
     options: MongooseRepositoryModuleFeatureOptions,
   ): DynamicModule {
-    const providers: FactoryProvider[] = options.models.map((m) => ({
-      provide: getRepositoryToken(m.name),
-      // TODO: typing
-      useFactory: (connection: Connection): MongooseRepository<unknown> => {
-        const model = connection.model(m.name, m.schema, m.collection);
+    const providers: FactoryProvider[] = options.entities.map(
+      <T>(type: Type<T>): FactoryProvider => ({
+        provide: getRepositoryToken(type),
+        useFactory: (connection: Connection): MongooseRepository<T> => {
+          const schema: Schema<T> = SchemaFactory.createForClass(type);
+          const model: Model<T> = connection.model<T>(type.name, schema);
 
-        return new MongooseRepository(model);
-      },
-      inject: [getConnectionToken()],
-    }));
+          return new MongooseRepository(type, model);
+        },
+        inject: [getConnectionToken()],
+      }),
+    );
 
     return {
       module: MongooseRepositoryModule,

@@ -18,8 +18,13 @@ import { HttpAdapterHost } from '@nestjs/core/helpers/http-adapter-host';
 import { Request, Response } from 'express';
 import { getReasonPhrase } from 'http-status-codes';
 
-import { ErrorApiResponse, ResponseError, ResponseMeta } from './models';
-import { getCommonResponseLinks } from './utils';
+import { getNestApiCommonDocumentLinks } from './utils';
+import {
+  NestApiDocumentMetaInterface,
+  NestApiErrorDocumentInterface,
+  NestApiErrorInterface,
+  NestApiGenericErrorInterface,
+} from '../api/interfaces';
 import { isNotNullOrUndefined } from '../core';
 
 type ApiResponseExceptionFilterOptions = {
@@ -63,7 +68,10 @@ export class ApiResponseExceptionFilter<
     return getReasonPhrase(status);
   }
 
-  private createGenericErrors(status: number, title: string): ResponseError[] {
+  private createGenericErrors(
+    status: number,
+    title: string,
+  ): NestApiGenericErrorInterface[] {
     return [
       {
         status: status,
@@ -76,7 +84,7 @@ export class ApiResponseExceptionFilter<
     exception: T,
     status: number,
     title: string,
-  ): ResponseError[] {
+  ): NestApiErrorInterface[] {
     if (!(exception instanceof HttpException)) {
       return this.createGenericErrors(status, title);
     }
@@ -89,7 +97,7 @@ export class ApiResponseExceptionFilter<
 
     if ('errors' in response) {
       // The validation errors are already in the correct format
-      return response['errors'] as ResponseError[];
+      return response['errors'] as NestApiErrorInterface[];
     }
 
     let detail: string | null = null;
@@ -144,17 +152,21 @@ export class ApiResponseExceptionFilter<
 
     const status: number = this.getStatus(exception);
     const reason: string = this.getReason(status);
-    const meta: ResponseMeta = {
+    const meta: NestApiDocumentMetaInterface = {
       status: status,
       reason: reason,
     };
 
-    const errors: ResponseError[] = this.getErrors(exception, status, reason);
+    const errors: NestApiErrorInterface[] = this.getErrors(
+      exception,
+      status,
+      reason,
+    );
 
-    const body: ErrorApiResponse = {
+    const body: NestApiErrorDocumentInterface = {
       meta: meta,
       errors: errors,
-      links: getCommonResponseLinks(request),
+      links: getNestApiCommonDocumentLinks(request),
     };
 
     adapter.reply(response, body, status);

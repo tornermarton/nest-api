@@ -3,14 +3,14 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type as TransformType } from 'class-transformer';
 import { IsOptional, IsString } from 'class-validator';
 
-export interface IRegexFilter {
+export interface RegexFilterInterface {
   readonly $regex?: string;
 }
 
 export function RegexFilter(options?: {
   caseInsensitive: boolean;
-}): Type<IRegexFilter> {
-  class RegexFilterClass implements IRegexFilter {
+}): Type<RegexFilterInterface> {
+  class RegexFilterClass implements RegexFilterInterface {
     @ApiPropertyOptional()
     @IsOptional()
     @IsString()
@@ -22,12 +22,12 @@ export function RegexFilter(options?: {
   return RegexFilterClass;
 }
 
-export interface IGteFilter<T> {
+export interface GteFilterInterface<T> {
   readonly $gte?: T;
 }
 
-export function GteFilter<T>(type: Type<T>): Type<IGteFilter<T>> {
-  class GteFilterClass implements IGteFilter<T> {
+export function GteFilter<T>(type: Type<T>): Type<GteFilterInterface<T>> {
+  class GteFilterClass implements GteFilterInterface<T> {
     @ApiPropertyOptional({ type })
     @IsOptional()
     @TransformType(() => type)
@@ -37,12 +37,12 @@ export function GteFilter<T>(type: Type<T>): Type<IGteFilter<T>> {
   return GteFilterClass;
 }
 
-export interface ILteFilter<T> {
+export interface LteFilterInterface<T> {
   readonly $lte?: T;
 }
 
-export function LteFilter<T>(type: Type<T>): Type<ILteFilter<T>> {
-  class LteFilterClass implements ILteFilter<T> {
+export function LteFilter<T>(type: Type<T>): Type<LteFilterInterface<T>> {
+  class LteFilterClass implements LteFilterInterface<T> {
     @ApiPropertyOptional({ type })
     @IsOptional()
     @TransformType(() => type)
@@ -52,13 +52,15 @@ export function LteFilter<T>(type: Type<T>): Type<ILteFilter<T>> {
   return LteFilterClass;
 }
 
-export interface IIntervalFilter<T> {
+export interface IntervalFilterInterface<T> {
   readonly $gte?: T;
   readonly $lte?: T;
 }
 
-export function IntervalFilter<T>(type: Type<T>): Type<IIntervalFilter<T>> {
-  class IntervalFilterClass implements IIntervalFilter<T> {
+export function IntervalFilter<T>(
+  type: Type<T>,
+): Type<IntervalFilterInterface<T>> {
+  class IntervalFilterClass implements IntervalFilterInterface<T> {
     @ApiPropertyOptional({ type })
     @IsOptional()
     @TransformType(() => type)

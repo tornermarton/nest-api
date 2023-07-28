@@ -1,17 +1,14 @@
-import { instanceToPlain } from 'class-transformer';
+import { Type } from '@nestjs/common';
+import { instanceToPlain, plainToInstance } from 'class-transformer';
 import { Model } from 'mongoose';
-import { combineLatest, from, Observable } from 'rxjs';
+import { combineLatest, concatAll, from, Observable, toArray } from 'rxjs';
 import { map } from 'rxjs/operators';
 
 import { IQueryDto } from '../../query';
 import { Repository } from '../../repository';
 import { PagedResource } from '../../response';
 
-function sortDtoToQuery(sort: string | string[]): Record<string, 1 | -1> {
-  if (typeof sort === 'string') {
-    sort = [sort];
-  }
-
+function sortDtoToQuery(sort: string[]): Record<string, 1 | -1> {
   return sort.reduce((acc, curr) => {
     if (curr.startsWith('-')) {
       acc[curr.substring(1)] = -1;
@@ -22,8 +19,15 @@ function sortDtoToQuery(sort: string | string[]): Record<string, 1 | -1> {
   }, {});
 }
 
+function expandDtoToQuery(expand: string[]): { path: string }[] {
+  return expand.map((e) => ({ path: e }));
+}
+
 export class MongooseRepository<TModel> extends Repository<TModel> {
-  constructor(private readonly _model: Model<TModel>) {
+  constructor(
+    private readonly _type: Type<TModel>,
+    private readonly _model: Model<TModel>,
+  ) {
     super();
   }
 
@@ -32,21 +36,24 @@ export class MongooseRepository<TModel> extends Repository<TModel> {
     TExpand extends Extract<keyof TModel, string>,
     TQueryDto extends IQueryDto<TModel, TFilter, TExpand>,
   >(query: TQueryDto): Observable<PagedResource<TModel>> {
-    const filter = instanceToPlain(query.filter ?? {});
-    const sort = sortDtoToQuery(query.sort ?? []);
-    const expand = query.expand ?? [];
+    const filter = instanceToPlain(query.filter);
+    const sort = sortDtoToQuery(query.sort);
+    const expand = expandDtoToQuery(query.expand);
 
-    let req = this._model.find<TModel>(filter);
-    const cnt = this._model.find<TModel>(filter);
+    const req = this._model
+      .find(filter)
+      .skip(query.page.offset * query.page.limit)
+      .limit(query.page.limit)
+      .sort(sort)
+      .populate(expand);
 
-    req = req.skip(query.page.offset * query.page.limit);
-    req = req.limit(query.page.limit);
+    const cnt = this._model.find(filter);
 
-    req = req.sort(sort);
-
-    req = req.populate(expand.map((e) => ({ path: e })));
-
-    const items$ = from(req.exec());
+    const items$ = from(req.exec()).pipe(
+      concatAll(),
+      map((model) => plainToInstance(this._type, model['_doc'])),
+      toArray(),
+    );
     const total$ = from(cnt.count().exec());
 
     return combineLatest([items$, total$]).pipe(
@@ -62,25 +69,26 @@ export class MongooseRepository<TModel> extends Repository<TModel> {
   }
 
   public read(id: string): Observable<TModel> {
-    return from(this._model.findById<TModel>(id).exec());
+    return from(this._model.findById(id).exec()).pipe(
+      map((model) => plainToInstance(this._type, model['_doc'])),
+    );
   }
 
-  // TODO: typing
   public update<TUpdateDto extends Partial<TModel>>(
     id: string,
     dto: TUpdateDto,
   ): Observable<TModel> {
     return from(
       this._model
-        .findByIdAndUpdate<TModel>(id, dto, {
+        .findByIdAndUpdate(id, dto, {
           new: true,
         })
         .exec(),
-    );
+    ).pipe(map((model) => plainToInstance(this._type, model['_doc'])));
   }
 
   public delete(id: string): Observable<void> {
-    return from(this._model.findByIdAndDelete<TModel>(id).exec()).pipe(
+    return from(this._model.findByIdAndDelete(id).exec()).pipe(
       map((): void => void 0),
     );
   }

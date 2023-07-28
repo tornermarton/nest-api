@@ -1,3 +1,5 @@
-export function getRepositoryToken(name: string): string {
-  return `${name}Repository`;
+import { Type } from '@nestjs/common';
+
+export function getRepositoryToken(type: Type): string {
+  return `${type.name}Repository`;
 }

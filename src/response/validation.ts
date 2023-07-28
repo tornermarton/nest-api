@@ -8,7 +8,10 @@ import {
   ValidationPipe,
 } from '@nestjs/common';
 
-import { ResponseError } from './models';
+import {
+  NestApiBodyErrorInterface,
+  NestApiQueryErrorInterface,
+} from '../api/interfaces';
 
 export const UUID_VALIDATION_PIPE: ParseUUIDPipe = new ParseUUIDPipe({
   version: '4',
@@ -17,13 +20,13 @@ export const UUID_VALIDATION_PIPE: ParseUUIDPipe = new ParseUUIDPipe({
 function processQueryErrors(
   errors: ValidationError[],
   parameter?: string,
-): ResponseError[] {
+): NestApiQueryErrorInterface[] {
   return errors
     .map((error) => {
       const parent = parameter ? `${parameter}.` : '';
       const path = `${parent}${error.property}`;
 
-      const errors: ResponseError[] = Object.values(
+      const errors: NestApiQueryErrorInterface[] = Object.values(
         error.constraints ?? {},
       ).map((constraint) => ({
         status: HttpStatus.BAD_REQUEST,
@@ -52,12 +55,12 @@ export const QUERY_VALIDATION_PIPE: ValidationPipe = new ValidationPipe({
 function processBodyErrors(
   errors: ValidationError[],
   pointer = '',
-): ResponseError[] {
+): NestApiBodyErrorInterface[] {
   return errors
     .map((error) => {
       const path = `${pointer}/${error.property}`;
 
-      const errors: ResponseError[] = Object.values(
+      const errors: NestApiBodyErrorInterface[] = Object.values(
         error.constraints ?? {},
       ).map((constraint) => ({
         status: HttpStatus.UNPROCESSABLE_ENTITY,

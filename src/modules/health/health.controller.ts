@@ -5,38 +5,24 @@ import {
   HttpStatus,
   ServiceUnavailableException,
 } from '@nestjs/common';
-import { ApiExtraModels, ApiProperty, ApiTags } from '@nestjs/swagger';
+import { ApiTags } from '@nestjs/swagger';
 import {
   DiskHealthIndicator,
   HealthCheck,
   HealthCheckResult,
   HealthCheckService,
-  HealthCheckStatus,
   HealthIndicatorResult,
   MongooseHealthIndicator,
 } from '@nestjs/terminus';
 import { catchError, from, Observable } from 'rxjs';
 
-import { isNotNullOrUndefined } from '../../core';
-import { ResponseError } from '../../response';
+import { Health } from './schemas/health.schema';
 import {
   NestApiEntityResponse,
+  NestApiErrorInterface,
   NestApiServiceUnavailableResponse,
-} from '../../swagger';
-
-class Health implements HealthCheckResult {
-  @ApiProperty()
-  public status: HealthCheckStatus;
-
-  @ApiProperty()
-  public info: HealthIndicatorResult;
-
-  @ApiProperty()
-  public error: HealthIndicatorResult;
-
-  @ApiProperty()
-  public details: HealthIndicatorResult;
-}
+} from '../../api';
+import { isNotNullOrUndefined } from '../../core';
 
 @ApiTags('health')
 @Controller('health')
@@ -48,7 +34,6 @@ export class HealthController {
   ) {}
 
   @Get()
-  @ApiExtraModels(Health)
   @NestApiEntityResponse(Health)
   @NestApiServiceUnavailableResponse()
   @HealthCheck()
@@ -75,7 +60,7 @@ export class HealthController {
           throw error;
         }
 
-        const errors: ResponseError[] = Object.entries(
+        const errors: NestApiErrorInterface[] = Object.entries(
           (response as HealthCheckResult).error,
         ).map(([name, obj]) => {
           let detail: string | null = null;

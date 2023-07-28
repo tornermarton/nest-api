@@ -2,27 +2,43 @@ import { plainToInstance } from 'class-transformer';
 import { Request } from 'express';
 import { parse, stringify } from 'qs';
 
-import { CommonResponseLinks, PagedResponseLinks, Paging } from './models';
+import { Paging } from './models';
+import {
+  NestApiCommonDocumentLinksInterface,
+  NestApiEntitiesDocumentLinksInterface,
+  NestApiEntityDocumentLinksInterface,
+} from '../api/interfaces';
 import { IQueryDto, PageDto } from '../query';
+
+export function getPaging(request: Request, total?: number): Paging {
+  const page: PageDto = plainToInstance(
+    PageDto,
+    request.query.page ?? {
+      limit: PageDto.DEFAULT_LIMIT,
+      offset: PageDto.DEFAULT_OFFSET,
+    },
+  );
+
+  return { limit: page.limit, offset: page.offset, total };
+}
 
 function getSelfLink(request: Request): string {
   // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
   return `${request.protocol}://${request.headers.host}${request.originalUrl}`;
 }
 
-export function getCommonResponseLinks(request: Request): CommonResponseLinks {
+export function getNestApiCommonDocumentLinks(
+  request: Request,
+): NestApiCommonDocumentLinksInterface {
   return {
     self: getSelfLink(request),
   };
 }
 
-export function getPaging(request: Request, total?: number): Paging {
-  const page: PageDto = plainToInstance(
-    PageDto,
-    request.query.page ?? { limit: 100, offset: 0 },
-  );
-
-  return { limit: page.limit, offset: page.offset, total };
+export function getNestApiEntityDocumentLinks(
+  request: Request,
+): NestApiEntityDocumentLinksInterface {
+  return getNestApiCommonDocumentLinks(request);
 }
 
 type Mutable<Type> = {
@@ -41,10 +57,10 @@ function updateQuery(
   return url.toString();
 }
 
-export function getPagedResponseLinks(
+export function getNestApiEntitiesDocumentLinks(
   request: Request,
   total = Infinity,
-): PagedResponseLinks {
+): NestApiEntitiesDocumentLinksInterface {
   const self: string = getSelfLink(request);
 
   const url: URL = new URL(self);
