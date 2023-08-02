@@ -4,8 +4,9 @@ import { Model } from 'mongoose';
 import { combineLatest, concatAll, from, Observable, toArray } from 'rxjs';
 import { map } from 'rxjs/operators';
 
+import { MongooseEntity } from './mongoose-entity';
 import { IQueryDto } from '../../query';
-import { Repository } from '../../repository';
+import { CreateDto, Repository, UpdateDto } from '../../repository';
 import { PagedResource } from '../../response';
 
 function sortDtoToQuery(sort: string[]): Record<string, 1 | -1> {
@@ -23,7 +24,9 @@ function expandDtoToQuery(expand: string[]): { path: string }[] {
   return expand.map((e) => ({ path: e }));
 }
 
-export class MongooseRepository<TModel> extends Repository<TModel> {
+export class MongooseRepository<
+  TModel extends MongooseEntity,
+> extends Repository<TModel> {
   constructor(
     private readonly _type: Type<TModel>,
     private readonly _model: Model<TModel>,
@@ -31,11 +34,15 @@ export class MongooseRepository<TModel> extends Repository<TModel> {
     super();
   }
 
-  public find<
-    TFilter,
-    TExpand extends Extract<keyof TModel, string>,
-    TQueryDto extends IQueryDto<TModel, TFilter, TExpand>,
-  >(query: TQueryDto): Observable<PagedResource<TModel>> {
+  private transform(model: unknown): TModel {
+    return plainToInstance(this._type, model, {
+      excludeExtraneousValues: true,
+    });
+  }
+
+  public find<TFilter, TExpand extends Extract<keyof TModel, string>>(
+    query: IQueryDto<TModel, TFilter, TExpand>,
+  ): Observable<PagedResource<TModel>> {
     const filter = instanceToPlain(query.filter);
     const sort = sortDtoToQuery(query.sort);
     const expand = expandDtoToQuery(query.expand);
@@ -51,7 +58,8 @@ export class MongooseRepository<TModel> extends Repository<TModel> {
 
     const items$ = from(req.exec()).pipe(
       concatAll(),
-      map((model) => plainToInstance(this._type, model['_doc'])),
+      map((model) => model.toObject({ virtuals: true })),
+      map((model) => this.transform(model)),
       toArray(),
     );
     const total$ = from(cnt.count().exec());
@@ -62,29 +70,28 @@ export class MongooseRepository<TModel> extends Repository<TModel> {
   }
 
   // TODO: typing
-  public create<TCreateDto extends Partial<TModel>>(
-    dto: TCreateDto,
-  ): Observable<TModel> {
-    return from(new this._model<TModel>(dto as unknown as TModel).save());
+  public create(dto: CreateDto<TModel>): Observable<TModel> {
+    return from(new this._model(dto).save());
   }
 
   public read(id: string): Observable<TModel> {
     return from(this._model.findById(id).exec()).pipe(
-      map((model) => plainToInstance(this._type, model['_doc'])),
+      map((model) => model.toObject({ virtuals: true })),
+      map((model) => this.transform(model)),
     );
   }
 
-  public update<TUpdateDto extends Partial<TModel>>(
-    id: string,
-    dto: TUpdateDto,
-  ): Observable<TModel> {
+  public update(id: string, dto: UpdateDto<TModel>): Observable<TModel> {
     return from(
       this._model
         .findByIdAndUpdate(id, dto, {
           new: true,
         })
         .exec(),
-    ).pipe(map((model) => plainToInstance(this._type, model['_doc'])));
+    ).pipe(
+      map((model) => model.toObject({ virtuals: true })),
+      map((model) => this.transform(model)),
+    );
   }
 
   public delete(id: string): Observable<void> {
