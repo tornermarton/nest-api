@@ -1,3 +1,3 @@
 export * from './decorators';
-export * from './repository';
+export * from './entity-repository';
 export * from './utils';

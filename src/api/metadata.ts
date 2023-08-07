@@ -7,7 +7,8 @@ import { isNullOrUndefined } from '../core';
 export type NestApiEntityPropertiesMetadata = {
   id: { name: string };
   attributes: { name: string }[];
-  relationships: { name: string; type: string; isArray: boolean }[];
+  // eslint-disable-next-line @typescript-eslint/ban-types
+  relationships: { name: string; type: () => Function; isArray: boolean }[];
   meta: { name: string }[];
 };
 

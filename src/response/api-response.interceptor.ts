@@ -92,27 +92,35 @@ export class NestApiResourceBuilder {
     };
   }
 
-  public relationship<T extends string | string[]>(
+  public relationshipToOne(
     name: string,
-    value: T,
     type: string,
+    value: string | null,
   ): NestApiResourceBuilder {
     this._relationships = this._relationships ?? {};
 
-    if (Array.isArray(value)) {
-      this._relationships[name] = {
-        data: value.map((id) => ({
-          id: id,
-          type: type,
-        })),
-        links: this.createRelationshipToManyLinks(type),
-      };
-    } else {
-      this._relationships[name] = {
-        data: { id: value, type: type },
-        links: this.createRelationshipToOneLinks(type),
-      };
-    }
+    this._relationships[name] = {
+      data: { id: value, type: type },
+      links: this.createRelationshipToOneLinks(type),
+    };
+
+    return this;
+  }
+
+  public relationshipToMany(
+    name: string,
+    type: string,
+    value: string[],
+  ): NestApiResourceBuilder {
+    this._relationships = this._relationships ?? {};
+
+    this._relationships[name] = {
+      data: value.map((id) => ({
+        id: id,
+        type: type,
+      })),
+      links: this.createRelationshipToManyLinks(type),
+    };
 
     return this;
   }
@@ -179,8 +187,24 @@ export class ApiResponseInterceptor
       builder.attribute(name, obj[name]);
     }
 
-    for (const { name, type } of metadata.properties.relationships) {
-      builder.relationship(name, obj[name] as string, type);
+    for (const { name, type, isArray } of metadata.properties.relationships) {
+      const relationshipMetadata: NestApiEntityMetadata = getEntityMetadata(
+        type().prototype,
+      );
+
+      if (isArray) {
+        builder.relationshipToMany(
+          name,
+          relationshipMetadata.type,
+          obj[name] as string[],
+        );
+      } else {
+        builder.relationshipToOne(
+          name,
+          relationshipMetadata.type,
+          obj[name] as string,
+        );
+      }
     }
 
     return builder.build();

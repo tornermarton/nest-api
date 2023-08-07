@@ -1,11 +1,22 @@
 import { Inject, Type } from '@nestjs/common';
 
-import { getRepositoryToken } from './utils';
+import {
+  getEntityRepositoryToken,
+  getRelationshipRepositoryToken,
+} from './utils';
 
-export const InjectRepository = (
+export const InjectEntityRepository = (
   type: Type,
 ): ((
   target: object,
   key: string | symbol | undefined,
   index?: number,
-) => void) => Inject(getRepositoryToken(type));
+) => void) => Inject(getEntityRepositoryToken(type));
+
+export const InjectRelationshipRepository = (
+  name: string,
+): ((
+  target: object,
+  key: string | symbol | undefined,
+  index?: number,
+) => void) => Inject(getRelationshipRepositoryToken(name));

@@ -3,9 +3,7 @@ import { Expose } from 'class-transformer';
 
 import { isNullOrUndefined } from '../../core';
 import {
-  getEntityMetadata,
   getEntityPropertiesMetadata,
-  NestApiEntityMetadata,
   NestApiEntityPropertiesMetadata,
   setEntityMetadata,
   setEntityPropertiesMetadata,
@@ -81,7 +79,7 @@ export function NestApiAttributeProperty(
 
 export function NestApiRelationshipProperty(
   // eslint-disable-next-line @typescript-eslint/ban-types
-  options: ApiPropertyOptions & { type: Function },
+  options: ApiPropertyOptions & { type: () => Function },
 ): PropertyDecorator {
   // eslint-disable-next-line @typescript-eslint/ban-types
   return (target: Object, propertyKey: string | symbol): void => {
@@ -94,10 +92,6 @@ export function NestApiRelationshipProperty(
       isArray: false,
     })(target, propertyKey);
 
-    const relationshipMetadata: NestApiEntityMetadata = getEntityMetadata(
-      options.type.prototype,
-    );
-
     const propertiesMetadata: Partial<NestApiEntityPropertiesMetadata> =
       getEntityPropertiesMetadata(target);
     setEntityPropertiesMetadata(target, {
@@ -106,7 +100,7 @@ export function NestApiRelationshipProperty(
         ...(propertiesMetadata.relationships ?? []),
         {
           name: propertyKey.toString(),
-          type: relationshipMetadata.type,
+          type: options.type,
           isArray: options.isArray,
         },
       ],
