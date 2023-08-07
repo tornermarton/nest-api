@@ -28,7 +28,7 @@ export class MongooseRelationshipRepository<
 > extends RelationshipRepository<TRelated> {
   constructor(
     private readonly _connection: Connection,
-    private readonly _type: Type<TRelated>,
+    private readonly _related: Type<TRelated>,
     private readonly _model: Model<MongooseRelationship>,
     private readonly _inverseModel?: Model<MongooseRelationship>,
   ) {
@@ -42,7 +42,7 @@ export class MongooseRelationshipRepository<
   }
 
   private transformRelated(entity: unknown): TRelated {
-    return plainToInstance(this._type, entity, {
+    return plainToInstance(this._related, entity, {
       excludeExtraneousValues: true,
     });
   }
@@ -63,7 +63,7 @@ export class MongooseRelationshipRepository<
   public findRelated(id1: string): Observable<TRelated[]> {
     const req = this._model
       .find({ id1 })
-      .populate({ path: 'id2', model: this._type.name });
+      .populate({ path: 'id2', model: this._related.name });
 
     return from(req.exec()).pipe(
       concatAll(),
@@ -124,7 +124,7 @@ export class MongooseRelationshipRepository<
   public readRelated(id1: string, id2: string): Observable<TRelated> {
     const req = this._model
       .findOne({ id1, id2 })
-      .populate({ path: 'id2', model: this._type.name });
+      .populate({ path: 'id2', model: this._related.name });
 
     return from(req.exec()).pipe(
       map((relationship) => relationship.toObject()),
