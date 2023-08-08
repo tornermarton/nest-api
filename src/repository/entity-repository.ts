@@ -24,12 +24,12 @@ export abstract class EntityRepository<TModel extends Entity> {
 
   public abstract create(dto: EntityCreateDto<TModel>): Observable<TModel>;
 
-  public abstract read(id: string): Observable<TModel>;
+  public abstract read(id: string): Observable<TModel | null>;
 
   public abstract update(
     id: string,
     dto: EntityUpdateDto<TModel>,
-  ): Observable<TModel>;
+  ): Observable<TModel | null>;
 
   public abstract delete(id: string): Observable<void>;
 }

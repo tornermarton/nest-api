@@ -7,12 +7,14 @@ import {
   forkJoin,
   from,
   Observable,
+  of,
   reduce,
   toArray,
 } from 'rxjs';
 import { map } from 'rxjs/operators';
 
 import { MongooseEntity } from './mongoose-entity';
+import { isNotNullOrUndefined } from '../../core';
 import { IQueryDto } from '../../query';
 import {
   EntityCreateDto,
@@ -119,32 +121,42 @@ export class MongooseEntityRepository<
 
   public create(dto: EntityCreateDto<TEntity>): Observable<TEntity> {
     return from(new this._model(dto).save()).pipe(
-      map((entity) => entity.toObject()),
-      concatMap((entity) =>
-        this.fetchRelationships(entity.id).pipe(
-          map((relationships) => ({ ...entity, ...relationships })),
-        ),
-      ),
-      map((entity) => this.transform(entity)),
+      concatMap((result) => {
+        if (isNotNullOrUndefined(result)) {
+          const entity = result.toObject();
+
+          return this.fetchRelationships(entity.id).pipe(
+            map((relationships) => ({ ...entity, ...relationships })),
+            map((entity) => this.transform(entity)),
+          );
+        } else {
+          return of(result);
+        }
+      }),
     );
   }
 
-  public read(id: string): Observable<TEntity> {
+  public read(id: string): Observable<TEntity | null> {
     return from(this._model.findById(id).exec()).pipe(
-      map((entity) => entity.toObject()),
-      concatMap((entity) =>
-        this.fetchRelationships(entity.id).pipe(
-          map((relationships) => ({ ...entity, ...relationships })),
-        ),
-      ),
-      map((entity) => this.transform(entity)),
+      concatMap((result) => {
+        if (isNotNullOrUndefined(result)) {
+          const entity = result.toObject();
+
+          return this.fetchRelationships(entity.id).pipe(
+            map((relationships) => ({ ...entity, ...relationships })),
+            map((entity) => this.transform(entity)),
+          );
+        } else {
+          return of(result);
+        }
+      }),
     );
   }
 
   public update(
     id: string,
     dto: EntityUpdateDto<TEntity>,
-  ): Observable<TEntity> {
+  ): Observable<TEntity | null> {
     return from(
       this._model
         .findByIdAndUpdate(id, dto, {
@@ -152,13 +164,18 @@ export class MongooseEntityRepository<
         })
         .exec(),
     ).pipe(
-      map((entity) => entity.toObject()),
-      concatMap((entity) =>
-        this.fetchRelationships(entity.id).pipe(
-          map((relationships) => ({ ...entity, ...relationships })),
-        ),
-      ),
-      map((entity) => this.transform(entity)),
+      concatMap((result) => {
+        if (isNotNullOrUndefined(result)) {
+          const entity = result.toObject();
+
+          return this.fetchRelationships(entity.id).pipe(
+            map((relationships) => ({ ...entity, ...relationships })),
+            map((entity) => this.transform(entity)),
+          );
+        } else {
+          return of(result);
+        }
+      }),
     );
   }
 

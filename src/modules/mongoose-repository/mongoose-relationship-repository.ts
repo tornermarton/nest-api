@@ -114,21 +114,35 @@ export class MongooseRelationshipRepository<
     );
   }
 
-  public read(id1: string, id2: string): Observable<Relationship> {
+  public read(id1: string, id2: string): Observable<Relationship | null> {
     return from(this._model.findOne({ id1, id2 }).exec()).pipe(
-      map((relationship) => relationship.toObject()),
-      map((relationship) => this.transform(relationship)),
+      map((result) => {
+        if (isNotNullOrUndefined(result)) {
+          const relationship = result.toObject();
+
+          return this.transform(relationship);
+        } else {
+          return result;
+        }
+      }),
     );
   }
 
-  public readRelated(id1: string, id2: string): Observable<TRelated> {
+  public readRelated(id1: string, id2: string): Observable<TRelated | null> {
     const req = this._model
       .findOne({ id1, id2 })
       .populate({ path: 'id2', model: this._related.name });
 
     return from(req.exec()).pipe(
-      map((relationship) => relationship.toObject()),
-      map((relationship) => this.transformRelated(relationship.id2)),
+      map((result) => {
+        if (isNotNullOrUndefined(result)) {
+          const relationship = result.toObject();
+
+          return this.transformRelated(relationship.id2);
+        } else {
+          return result;
+        }
+      }),
     );
   }
 

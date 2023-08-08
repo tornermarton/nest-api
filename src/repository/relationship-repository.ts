@@ -16,8 +16,14 @@ export abstract class RelationshipRepository<TRelated extends Entity> {
 
   public abstract create(dto: RelationshipCreateDto): Observable<Relationship>;
 
-  public abstract read(id1: string, id2: string): Observable<Relationship>;
-  public abstract readRelated(id1: string, id2: string): Observable<TRelated>;
+  public abstract read(
+    id1: string,
+    id2: string,
+  ): Observable<Relationship | null>;
+  public abstract readRelated(
+    id1: string,
+    id2: string,
+  ): Observable<TRelated | null>;
 
   public abstract delete(id1: string, id2: string): Observable<void>;
 }
