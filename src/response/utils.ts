@@ -2,15 +2,28 @@ import { plainToInstance } from 'class-transformer';
 import { Request } from 'express';
 import { parse, stringify } from 'qs';
 
-import { Paging } from './models';
+import { EntityResponse } from './models';
 import {
+  NestApiDocumentPaging,
+  NestApiPaginationLinksInterface,
+  NestApiRelationshipDocumentLinks,
   NestApiCommonDocumentLinksInterface,
   NestApiEntitiesDocumentLinksInterface,
   NestApiEntityDocumentLinksInterface,
-} from '../api/interfaces';
+} from '../api';
+import { isNotNullOrUndefined } from '../core';
 import { IQueryDto, PageDto } from '../query';
 
-export function getPaging(request: Request, total?: number): Paging {
+export function isNotEmptyEntityResponse<T>(
+  response: EntityResponse<T | null | undefined>,
+): response is EntityResponse<T> {
+  return isNotNullOrUndefined(response.data);
+}
+
+export function getNestApiDocumentPaging(
+  request: Request,
+  total?: number,
+): NestApiDocumentPaging {
   const page: PageDto = plainToInstance(
     PageDto,
     request.query.page ?? {
@@ -41,6 +54,17 @@ export function getNestApiEntityDocumentLinks(
   return getNestApiCommonDocumentLinks(request);
 }
 
+export function getNestApiRelationshipDocumentLinks(
+  request: Request,
+): NestApiRelationshipDocumentLinks {
+  const links = getNestApiCommonDocumentLinks(request);
+
+  return {
+    ...links,
+    related: links.self.replace('/relationships', ''),
+  };
+}
+
 type Mutable<Type> = {
   -readonly [Key in keyof Type]: Type[Key];
 };
@@ -57,29 +81,30 @@ function updateQuery(
   return url.toString();
 }
 
-export function getNestApiEntitiesDocumentLinks(
+function getNestApiPaginationLinks(
   request: Request,
+  base: string,
   total = Infinity,
-): NestApiEntitiesDocumentLinksInterface {
-  const self: string = getSelfLink(request);
-
-  const url: URL = new URL(self);
+): NestApiPaginationLinksInterface {
+  const url: URL = new URL(base);
   // eslint-disable-next-line @typescript-eslint/no-unsafe-call
   const query: Mutable<IQueryDto<unknown, unknown, never>> = parse(url.search, {
     ignoreQueryPrefix: true,
     comma: true,
   });
 
-  const paging: Paging = getPaging(request, total);
-  const limit: number = paging.limit;
-  const offset: number = paging.offset;
+  const paging: NestApiDocumentPaging = getNestApiDocumentPaging(
+    request,
+    total,
+  );
+  const { limit, offset } = paging;
 
   query.page = { limit: limit, offset: 0 };
   const first: string = updateQuery(url, query);
 
-  let prev: string;
-  let next: string;
-  let last: string;
+  let prev: string | undefined = undefined;
+  let next: string | undefined = undefined;
+  let last: string | undefined = undefined;
 
   if (offset > 0) {
     query.page = { limit: limit, offset: Math.max(0, offset - limit) };
@@ -100,5 +125,33 @@ export function getNestApiEntitiesDocumentLinks(
     last = updateQuery(url, query);
   }
 
-  return { self, first, prev, next, last };
+  return { first, prev, next, last };
+}
+
+export function getNestApiEntitiesDocumentLinks(
+  request: Request,
+  total = Infinity,
+): NestApiEntitiesDocumentLinksInterface {
+  const commonLinks = getNestApiCommonDocumentLinks(request);
+
+  const { self } = commonLinks;
+  const paginationLinks = getNestApiPaginationLinks(request, self, total);
+
+  return { ...commonLinks, ...paginationLinks };
+}
+
+export function getNestApiRelationshipsDocumentLinks(
+  request: Request,
+  total = Infinity,
+): NestApiRelationshipDocumentLinks {
+  const commonLinks = getNestApiCommonDocumentLinks(request);
+
+  const { self } = commonLinks;
+  const paginationLinks = getNestApiPaginationLinks(request, self, total);
+
+  return {
+    ...commonLinks,
+    ...paginationLinks,
+    related: self.replace('/relationships', ''),
+  };
 }

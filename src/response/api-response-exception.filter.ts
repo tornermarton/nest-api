@@ -100,7 +100,7 @@ export class ApiResponseExceptionFilter<
       return response['errors'] as NestApiErrorInterface[];
     }
 
-    let detail: string | null = null;
+    let detail: string | undefined = undefined;
 
     if (
       status < 500 &&

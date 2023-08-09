@@ -101,7 +101,7 @@ export function NestApiRelationshipProperty(
         {
           name: propertyKey.toString(),
           type: options.type,
-          isArray: options.isArray,
+          isArray: options.isArray ?? false,
         },
       ],
     });

@@ -7,6 +7,7 @@ import {
   CallHandler,
   FactoryProvider,
   RequestMethod,
+  Type,
 } from '@nestjs/common';
 import { AbstractHttpAdapter, APP_INTERCEPTOR } from '@nestjs/core';
 import { HttpAdapterHost } from '@nestjs/core/helpers/http-adapter-host';
@@ -16,17 +17,26 @@ import { getReasonPhrase } from 'http-status-codes';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 
-import { PagedResource } from './models';
+import {
+  EntitiesResponse,
+  EntityResponse,
+  RelationshipResponse,
+  RelationshipsResponse,
+} from './models';
 import {
   getNestApiEntitiesDocumentLinks,
   getNestApiEntityDocumentLinks,
-  getPaging,
+  getNestApiDocumentPaging,
+  getNestApiRelationshipDocumentLinks,
+  getNestApiRelationshipsDocumentLinks,
+  getNestApiCommonDocumentLinks,
 } from './utils';
 import {
   getEntityMetadata,
   NestApiDocumentInterface,
   NestApiDocumentMetaInterface,
   NestApiEntityMetadata,
+  NestApiResourceIdentifier,
   NestApiResourceInterface,
   NestApiResourceRelationshipInterface,
   NestApiResourceRelationshipToManyLinksInterface,
@@ -39,7 +49,7 @@ type ApiResponseInterceptorOptions = {
   exclude: { path: string; method: RequestMethod }[];
 };
 
-export class NestApiResourceBuilder {
+export class NestApiEntityResourceBuilder {
   private readonly _id: string;
   private readonly _type: string;
 
@@ -56,13 +66,13 @@ export class NestApiResourceBuilder {
     return `/${this._type}/${this._id}`;
   }
 
-  public meta<T>(name: string, value: T): NestApiResourceBuilder {
+  public meta<T>(name: string, value: T): NestApiEntityResourceBuilder {
     this._meta = this._meta ?? {};
     this._meta[name] = value;
     return this;
   }
 
-  public attribute<T>(name: string, value: T): NestApiResourceBuilder {
+  public attribute<T>(name: string, value: T): NestApiEntityResourceBuilder {
     this._attributes = this._attributes ?? {};
     this._attributes[name] = value;
     return this;
@@ -96,11 +106,11 @@ export class NestApiResourceBuilder {
     name: string,
     type: string,
     value: string | null,
-  ): NestApiResourceBuilder {
+  ): NestApiEntityResourceBuilder {
     this._relationships = this._relationships ?? {};
 
     this._relationships[name] = {
-      data: { id: value, type: type },
+      data: isNotNullOrUndefined(value) ? { id: value, type: type } : null,
       links: this.createRelationshipToOneLinks(type),
     };
 
@@ -111,7 +121,7 @@ export class NestApiResourceBuilder {
     name: string,
     type: string,
     value: string[],
-  ): NestApiResourceBuilder {
+  ): NestApiEntityResourceBuilder {
     this._relationships = this._relationships ?? {};
 
     this._relationships[name] = {
@@ -163,17 +173,17 @@ export class ApiResponseInterceptor
   ) {}
 
   // eslint-disable-next-line @typescript-eslint/ban-types
-  private transform<T extends Function>(entity: T): NestApiResourceInterface {
+  private transformEntity<T extends Function>(
+    entity: T,
+  ): NestApiResourceInterface {
     const metadata: NestApiEntityMetadata = getEntityMetadata(entity);
 
     // TODO: might be a good idea to check type in the decorator
     const id: string = entity[metadata.properties.id.name];
     const type: string = metadata.type;
 
-    const builder: NestApiResourceBuilder = new NestApiResourceBuilder(
-      id,
-      type,
-    );
+    const builder: NestApiEntityResourceBuilder =
+      new NestApiEntityResourceBuilder(id, type);
 
     const obj: Record<string, unknown> = instanceToPlain(entity, {
       excludeExtraneousValues: true,
@@ -210,6 +220,19 @@ export class ApiResponseInterceptor
     return builder.build();
   }
 
+  private transformRelationship<T>(
+    type: Type<T>,
+    data?: string,
+  ): NestApiResourceIdentifier | null {
+    if (isNotNullOrUndefined(data)) {
+      const metadata: NestApiEntityMetadata = getEntityMetadata(type.prototype);
+
+      return { id: data, type: metadata.type };
+    } else {
+      return null;
+    }
+  }
+
   public intercept(
     context: ExecutionContext,
     next: CallHandler,
@@ -242,23 +265,50 @@ export class ApiResponseInterceptor
     };
 
     return next.handle().pipe(
-      // eslint-disable-next-line @typescript-eslint/ban-types
-      map(<T extends Function>(resource: T | PagedResource<T>) => {
-        if (resource instanceof PagedResource) {
-          return {
-            meta: meta,
-            data: resource.items.map((r) => this.transform(r)),
-            links: getNestApiEntitiesDocumentLinks(request, resource.total),
-            paging: getPaging(request, resource.total),
-          };
-        } else {
-          return {
-            meta: meta,
-            data: this.transform(resource),
-            links: getNestApiEntityDocumentLinks(request),
-          };
-        }
-      }),
+      map(
+        // eslint-disable-next-line @typescript-eslint/ban-types
+        <T extends Function>(
+          r:
+            | void
+            | EntityResponse<T>
+            | EntitiesResponse<T>
+            | RelationshipResponse<T>
+            | RelationshipsResponse<T>,
+        ) => {
+          if (r instanceof EntityResponse) {
+            return {
+              meta: meta,
+              data: this.transformEntity(r.data),
+              links: getNestApiEntityDocumentLinks(request),
+            };
+          } else if (r instanceof EntitiesResponse) {
+            return {
+              meta: meta,
+              data: r.data.map((e) => this.transformEntity(e)),
+              links: getNestApiEntitiesDocumentLinks(request, r.total),
+              paging: getNestApiDocumentPaging(request, r.total),
+            };
+          } else if (r instanceof RelationshipResponse) {
+            return {
+              meta: meta,
+              data: this.transformRelationship(r.type, r.data),
+              links: getNestApiRelationshipDocumentLinks(request),
+            };
+          } else if (r instanceof RelationshipsResponse) {
+            return {
+              meta: meta,
+              data: r.data.map((e) => this.transformRelationship(r.type, e)),
+              links: getNestApiRelationshipsDocumentLinks(request, r.total),
+              paging: getNestApiDocumentPaging(request, r.total),
+            };
+          } else {
+            return {
+              meta: meta,
+              links: getNestApiCommonDocumentLinks(request),
+            };
+          }
+        },
+      ),
     );
   }
 }

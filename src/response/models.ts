@@ -1,16 +1,21 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from '@nestjs/common';
 
-export class PagedResource<T = unknown> {
-  constructor(public readonly items: T[], public readonly total?: number) {}
+export class EntityResponse<T = unknown> {
+  constructor(public readonly data: T) {}
 }
 
-export class Paging {
-  @ApiProperty()
-  public readonly limit: number;
+export class EntitiesResponse<T = unknown> {
+  constructor(public readonly data: T[], public readonly total?: number) {}
+}
 
-  @ApiProperty()
-  public readonly offset: number;
+export class RelationshipResponse<T = unknown> {
+  constructor(public readonly type: Type<T>, public readonly data?: string) {}
+}
 
-  @ApiPropertyOptional()
-  public readonly total?: number;
+export class RelationshipsResponse<T = unknown> {
+  constructor(
+    public readonly type: Type<T>,
+    public readonly data: string[],
+    public readonly total?: number,
+  ) {}
 }

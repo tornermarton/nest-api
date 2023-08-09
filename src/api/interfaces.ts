@@ -3,7 +3,7 @@ export type NestApiResourceIdentifierInterface = {
   readonly type: string;
 };
 
-type NestApiPaginationLinksInterface = {
+export type NestApiPaginationLinksInterface = {
   readonly first?: string;
   readonly prev?: string;
   readonly next?: string;
@@ -19,7 +19,7 @@ export type NestApiResourceRelationshipToOneLinksInterface =
   NestApiCommonResourceRelationshipLinksInterface;
 
 export type NestApiResourceRelationshipToOneInterface = {
-  readonly data: NestApiResourceIdentifierInterface;
+  readonly data: NestApiResourceIdentifierInterface | null;
   readonly links: NestApiResourceRelationshipToOneLinksInterface;
 };
 
@@ -66,7 +66,7 @@ export type NestApiEntityDocumentLinksInterface =
   NestApiCommonDocumentLinksInterface;
 
 export type NestApiEntityDocumentInterface = NestApiCommonDocumentInterface & {
-  readonly data: NestApiResourceIdentifierInterface | NestApiResourceInterface;
+  readonly data: NestApiResourceInterface;
   readonly links: NestApiEntityDocumentLinksInterface;
 };
 
@@ -75,11 +75,31 @@ export type NestApiEntitiesDocumentLinksInterface =
 
 export type NestApiEntitiesDocumentInterface =
   NestApiCommonDocumentInterface & {
-    readonly data: (
-      | NestApiResourceIdentifierInterface
-      | NestApiResourceInterface
-    )[];
+    readonly data: NestApiResourceInterface[];
     readonly links: NestApiEntitiesDocumentLinksInterface;
+  };
+
+export type NestApiRelationshipDocumentLinksInterface =
+  NestApiCommonDocumentLinksInterface & {
+    readonly related: string;
+  };
+
+export type NestApiRelationshipDocumentInterface =
+  NestApiCommonDocumentInterface & {
+    readonly data: NestApiResourceIdentifierInterface | null;
+    readonly links: NestApiRelationshipDocumentLinksInterface;
+  };
+
+export type NestApiRelationshipsDocumentLinksInterface =
+  NestApiCommonDocumentLinksInterface &
+    NestApiPaginationLinksInterface & {
+      readonly related: string;
+    };
+
+export type NestApiRelationshipsDocumentInterface =
+  NestApiCommonDocumentInterface & {
+    readonly data: NestApiResourceIdentifierInterface[];
+    readonly links: NestApiRelationshipsDocumentLinksInterface;
   };
 
 type NestApiCommonErrorInterface = {

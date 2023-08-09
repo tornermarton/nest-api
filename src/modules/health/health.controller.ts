@@ -61,9 +61,9 @@ export class HealthController {
         }
 
         const errors: NestApiErrorInterface[] = Object.entries(
-          (response as HealthCheckResult).error,
+          (response as HealthCheckResult).error ?? {},
         ).map(([name, obj]) => {
-          let detail: string | null = null;
+          let detail: string | undefined = undefined;
 
           if (
             isNotNullOrUndefined(obj['message']) &&

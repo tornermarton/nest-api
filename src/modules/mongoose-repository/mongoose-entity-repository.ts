@@ -1,16 +1,7 @@
 import { Type } from '@nestjs/common';
 import { instanceToPlain, plainToInstance } from 'class-transformer';
 import { Model } from 'mongoose';
-import {
-  concatAll,
-  concatMap,
-  forkJoin,
-  from,
-  Observable,
-  of,
-  reduce,
-  toArray,
-} from 'rxjs';
+import { concatAll, from, Observable, toArray } from 'rxjs';
 import { map } from 'rxjs/operators';
 
 import { MongooseEntity } from './mongoose-entity';
@@ -21,7 +12,6 @@ import {
   EntityRepository,
   EntityUpdateDto,
 } from '../../repository';
-import { RelationshipRepository } from '../../repository/relationship-repository';
 
 function filterDtoToQuery(filter: unknown): Record<string, unknown> {
   return instanceToPlain(filter);
@@ -48,10 +38,6 @@ export class MongooseEntityRepository<
   constructor(
     private readonly _type: Type<TEntity>,
     private readonly _model: Model<TEntity>,
-    private readonly _relationships: Record<
-      string,
-      RelationshipRepository<any>
-    > = {},
   ) {
     super();
   }
@@ -62,34 +48,12 @@ export class MongooseEntityRepository<
     });
   }
 
-  private fetchRelationships(id: string): Observable<Record<string, string[]>> {
-    return from(Object.entries(this._relationships)).pipe(
-      // TODO: handle toOne relationships
-      map(([key, repository]) =>
-        repository.find(id).pipe(
-          concatAll(),
-          map((relationship) => relationship.id2),
-          toArray(),
-          map((relationships) => [key, relationships] as const),
-        ),
-      ),
-      toArray(),
-      concatMap((observables) => forkJoin(observables)),
-      concatAll(),
-      reduce((acc, [key, relationships]) => {
-        acc[key] = relationships;
-
-        return acc;
-      }, {} as Record<string, string[]>),
-    );
-  }
-
   public count<TFilter, TExpand extends Extract<keyof TEntity, string>>(
     query: IQueryDto<TEntity, TFilter, TExpand>,
   ): Observable<number> {
     const filter = filterDtoToQuery(query.filter);
 
-    return from(this._model.find(filter).count().exec());
+    return from(this._model.find(filter).countDocuments().exec());
   }
 
   public find<TFilter, TExpand extends Extract<keyof TEntity, string>>(
@@ -109,11 +73,6 @@ export class MongooseEntityRepository<
     return from(req.exec()).pipe(
       concatAll(),
       map((entity) => entity.toObject()),
-      concatMap((entity) =>
-        this.fetchRelationships(entity.id).pipe(
-          map((relationships) => ({ ...entity, ...relationships })),
-        ),
-      ),
       map((entity) => this.transform(entity)),
       toArray(),
     );
@@ -121,33 +80,20 @@ export class MongooseEntityRepository<
 
   public create(dto: EntityCreateDto<TEntity>): Observable<TEntity> {
     return from(new this._model(dto).save()).pipe(
-      concatMap((result) => {
-        if (isNotNullOrUndefined(result)) {
-          const entity = result.toObject();
-
-          return this.fetchRelationships(entity.id).pipe(
-            map((relationships) => ({ ...entity, ...relationships })),
-            map((entity) => this.transform(entity)),
-          );
-        } else {
-          return of(result);
-        }
-      }),
+      map((entity) => entity.toObject()),
+      map((entity) => this.transform(entity)),
     );
   }
 
   public read(id: string): Observable<TEntity | null> {
     return from(this._model.findById(id).exec()).pipe(
-      concatMap((result) => {
+      map((result) => {
         if (isNotNullOrUndefined(result)) {
           const entity = result.toObject();
 
-          return this.fetchRelationships(entity.id).pipe(
-            map((relationships) => ({ ...entity, ...relationships })),
-            map((entity) => this.transform(entity)),
-          );
+          return this.transform(entity);
         } else {
-          return of(result);
+          return null;
         }
       }),
     );
@@ -164,16 +110,13 @@ export class MongooseEntityRepository<
         })
         .exec(),
     ).pipe(
-      concatMap((result) => {
+      map((result) => {
         if (isNotNullOrUndefined(result)) {
           const entity = result.toObject();
 
-          return this.fetchRelationships(entity.id).pipe(
-            map((relationships) => ({ ...entity, ...relationships })),
-            map((entity) => this.transform(entity)),
-          );
+          return this.transform(entity);
         } else {
-          return of(result);
+          return null;
         }
       }),
     );

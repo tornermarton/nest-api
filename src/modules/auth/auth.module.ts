@@ -11,7 +11,7 @@ type AuthModuleOptions = {
 
 @Module({})
 export class AuthModule {
-  public static forRoot(options?: AuthModuleOptions): DynamicModule {
+  public static forRoot(options: AuthModuleOptions): DynamicModule {
     return {
       module: AuthModule,
       imports: [

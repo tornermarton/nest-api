@@ -20,6 +20,8 @@ import {
   NestApiEntitiesDocument,
   NestApiEntityDocument,
   NestApiErrorDocument,
+  NestApiRelationshipDocument,
+  NestApiRelationshipsDocument,
 } from '../models';
 
 export const NestApiQuery = <TModel extends Type>(
@@ -124,6 +126,32 @@ export const NestApiEntitiesResponse = <TModel extends Type>(
     ApiResponse({
       status: 200,
       type: document,
+      ...options,
+    }),
+  );
+};
+
+export const NestApiRelationshipResponse = (
+  options?: ApiResponseOptions,
+): MethodDecorator => {
+  return applyDecorators(
+    ApiExtraModels(NestApiRelationshipDocument),
+    ApiResponse({
+      status: 200,
+      type: NestApiRelationshipDocument,
+      ...options,
+    }),
+  );
+};
+
+export const NestApiRelationshipsResponse = (
+  options?: ApiResponseOptions,
+): MethodDecorator => {
+  return applyDecorators(
+    ApiExtraModels(NestApiRelationshipsDocument),
+    ApiResponse({
+      status: 200,
+      type: NestApiRelationshipsDocument,
       ...options,
     }),
   );

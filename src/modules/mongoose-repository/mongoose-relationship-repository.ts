@@ -1,12 +1,11 @@
 import { Type } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
-import { Connection, Model } from 'mongoose';
+import { Connection, Model, ClientSession } from 'mongoose';
 import {
   catchError,
   concatAll,
   concatMap,
   from,
-  iif,
   Observable,
   of,
   tap,
@@ -21,7 +20,7 @@ import { isNotNullOrUndefined, Relationship } from '../../core';
 import {
   RelationshipCreateDto,
   RelationshipRepository,
-} from '../../repository/relationship-repository';
+} from '../../repository';
 
 export class MongooseRelationshipRepository<
   TRelated extends MongooseEntity,
@@ -48,7 +47,7 @@ export class MongooseRelationshipRepository<
   }
 
   public count(id1: string): Observable<number> {
-    return from(this._model.find({ id1 }).count().exec());
+    return from(this._model.find({ id1 }).countDocuments().exec());
   }
 
   public find(id1: string): Observable<Relationship[]> {
@@ -73,28 +72,46 @@ export class MongooseRelationshipRepository<
     );
   }
 
+  private createInverse(
+    dto: RelationshipCreateDto,
+    session: ClientSession,
+  ): Observable<unknown> {
+    if (isNotNullOrUndefined(this._inverseModel)) {
+      const inverseDto: RelationshipCreateDto = {
+        ...dto,
+        id1: dto.id2,
+        id2: dto.id1,
+      };
+
+      const req = this._model.findOneAndUpdate(
+        { id1: inverseDto.id1, id2: inverseDto.id2 },
+        { $setOnInsert: inverseDto },
+        { upsert: true, new: true, setDefaultsOnInsert: true },
+      );
+
+      return from(req.session(session).exec());
+    } else {
+      return of(void 0);
+    }
+  }
+
   public create(dto: RelationshipCreateDto): Observable<Relationship> {
-    const inverseDto: RelationshipCreateDto = {
-      ...dto,
-      id1: dto.id2,
-      id2: dto.id1,
-    };
+    const req = this._model.findOneAndUpdate(
+      { id1: dto.id1, id2: dto.id2 },
+      { $setOnInsert: dto },
+      { upsert: true, new: true, setDefaultsOnInsert: true },
+    );
 
     return from(this._connection.startSession()).pipe(
       concatMap((session) =>
         of(void 0).pipe(
           tap(() => session.startTransaction()),
-          concatMap(() =>
-            from(new this._model(dto).save({ session: session })),
+          concatMap(() => from(req.session(session).exec())),
+          concatMap((relationship) =>
+            this.createInverse(dto, session).pipe(map(() => relationship)),
           ),
           concatMap((relationship) =>
-            iif(
-              () => isNotNullOrUndefined(this._inverseModel),
-              from(
-                new this._inverseModel(inverseDto).save({ session: session }),
-              ),
-              of(void 0),
-            ).pipe(
+            of(void 0).pipe(
               concatMap(() => from(session.commitTransaction())),
               concatMap(() => from(session.endSession())),
               map(() => relationship),
@@ -146,29 +163,38 @@ export class MongooseRelationshipRepository<
     );
   }
 
+  private deleteInverse(
+    id1: string,
+    id2: string,
+    session: ClientSession,
+  ): Observable<unknown> {
+    if (isNotNullOrUndefined(this._inverseModel)) {
+      const req = this._inverseModel.findOneAndDelete({
+        id1: id2,
+        id2: id1,
+      });
+
+      return from(req.session(session).exec());
+    } else {
+      return of(void 0);
+    }
+  }
   public delete(id1: string, id2: string): Observable<void> {
+    const req = this._model.findOneAndDelete({ id1, id2 });
+
     return from(this._connection.startSession()).pipe(
       concatMap((session) =>
         of(void 0).pipe(
           tap(() => session.startTransaction()),
+          concatMap(() => this.deleteInverse(id1, id2, session)),
+          concatMap(() => from(req.session(session).exec())),
           concatMap(() =>
-            from(
-              this._inverseModel
-                .findOneAndDelete({ id1: id2, id2: id1 })
-                .session(session)
-                .exec(),
+            of(void 0).pipe(
+              concatMap(() => from(session.commitTransaction())),
+              concatMap(() => from(session.endSession())),
+              map(() => void 0),
             ),
           ),
-          concatMap(() =>
-            from(
-              this._model
-                .findOneAndDelete({ id1, id2 })
-                .session(session)
-                .exec(),
-            ),
-          ),
-          concatMap(() => from(session.commitTransaction())),
-          concatMap(() => from(session.endSession())),
           catchError((error) =>
             of(void 0).pipe(
               concatMap(() => from(session.abortTransaction())),

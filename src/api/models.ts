@@ -27,6 +27,17 @@ export class NestApiResourceIdentifier {
   public readonly type: string;
 }
 
+export class NestApiDocumentPaging {
+  @ApiProperty()
+  public readonly limit: number;
+
+  @ApiProperty()
+  public readonly offset: number;
+
+  @ApiPropertyOptional()
+  public readonly total?: number;
+}
+
 export class NestApiPaginationLinks {
   @ApiPropertyOptional()
   public readonly first?: string;
@@ -195,10 +206,45 @@ export function NestApiEntitiesDocument(type: Type): Type {
 
     @ApiProperty({ type: NestApiEntityDocumentLinks })
     public readonly links: NestApiEntityDocumentLinks;
+
+    @ApiProperty({ type: NestApiDocumentPaging })
+    public readonly paging: NestApiDocumentPaging;
   }
   renameType(Document, `${name}EntitiesDocument`);
 
   return Document;
+}
+
+export class NestApiRelationshipDocumentLinks extends NestApiCommonDocumentLinks {
+  @ApiProperty()
+  public readonly related: string;
+}
+
+export class NestApiRelationshipDocument extends NestApiCommonDocument {
+  @ApiProperty({ type: NestApiResourceIdentifier, nullable: true })
+  public readonly data: NestApiResourceIdentifier | null;
+
+  @ApiProperty({ type: NestApiRelationshipDocumentLinks })
+  public readonly links: NestApiRelationshipDocumentLinks;
+}
+
+export class NestApiRelationshipsDocumentLinks extends IntersectionType(
+  NestApiCommonDocumentLinks,
+  NestApiPaginationLinks,
+) {
+  @ApiProperty()
+  public readonly related: string;
+}
+
+export class NestApiRelationshipsDocument extends NestApiCommonDocument {
+  @ApiProperty({ type: NestApiResourceIdentifier, isArray: true })
+  public readonly data: NestApiResourceIdentifier[];
+
+  @ApiProperty({ type: NestApiRelationshipsDocumentLinks })
+  public readonly links: NestApiRelationshipsDocumentLinks;
+
+  @ApiProperty({ type: NestApiDocumentPaging })
+  public readonly paging: NestApiDocumentPaging;
 }
 
 export class NestApiCommonError {
