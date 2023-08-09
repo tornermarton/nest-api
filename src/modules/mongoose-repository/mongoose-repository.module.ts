@@ -30,6 +30,7 @@ type MongooseConnection = {
   username: string;
   password: string;
   database: string;
+  replicaSet: string;
 };
 
 type MongooseRepositoryModuleRootOptions = {
@@ -146,7 +147,7 @@ class MongooseRepositoryCoreModule {
       module: MongooseRepositoryCoreModule,
       imports: [
         MongooseModule.forRoot(
-          `mongodb://${options.connection.username}:${options.connection.password}@${options.connection.host}:${options.connection.port}/${options.connection.database}?authMechanism=DEFAULT&authSource=${options.connection.database}`,
+          `mongodb://${options.connection.username}:${options.connection.password}@${options.connection.host}:${options.connection.port}/${options.connection.database}?authMechanism=DEFAULT&authSource=${options.connection.database}&replicaSet=${options.connection.replicaSet}`,
         ),
       ],
       providers: providers,

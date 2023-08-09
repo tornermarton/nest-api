@@ -14,7 +14,7 @@ import {
 import { map } from 'rxjs/operators';
 
 import { Entity, isNotNullOrUndefined } from '../../core';
-import { IQueryDto } from '../../query';
+import { IQueryDto } from '../../dto';
 import {
   EntityCreateDto,
   EntityRepository,
@@ -184,7 +184,7 @@ export class EntityManager<
     return this._entity.repository.delete(id);
   }
 
-  public readRelationship<TKey extends TRelationships>(
+  public findRelationship<TKey extends TRelationships>(
     key: TKey,
     id1: string,
     options?: { count: boolean },
@@ -227,5 +227,15 @@ export class EntityManager<
       map((relationship) => relationship.id2),
       map((id) => new RelationshipResponse(target, id)),
     );
+  }
+
+  public deleteRelationship<TKey extends TRelationships>(
+    key: TKey,
+    id1: string,
+    id2set: string[],
+  ): Observable<void> {
+    const { repository } = this._relationships[key];
+
+    return repository.delete(id1, id2set);
   }
 }

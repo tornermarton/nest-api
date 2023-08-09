@@ -43,7 +43,7 @@ import {
   NestApiResourceRelationshipToOneLinksInterface,
 } from '../api';
 import { isNotNullOrUndefined } from '../core';
-import { PageDto } from '../query';
+import { QueryDtoPage } from '../dto';
 
 type ApiResponseInterceptorOptions = {
   exclude: { path: string; method: RequestMethod }[];
@@ -91,8 +91,8 @@ export class NestApiEntityResourceBuilder {
     type: string,
   ): NestApiResourceRelationshipToManyLinksInterface {
     // TODO: add correct links for ToMany
-    const limit: number = PageDto.DEFAULT_LIMIT;
-    const offset: number = PageDto.DEFAULT_OFFSET;
+    const limit: number = QueryDtoPage.DEFAULT_LIMIT;
+    const offset: number = QueryDtoPage.DEFAULT_OFFSET;
     const nextOffset: number = offset + limit;
 
     return {

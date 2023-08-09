@@ -1,4 +1,9 @@
-import { applyDecorators, Type } from '@nestjs/common';
+import {
+  applyDecorators,
+  createParamDecorator,
+  ExecutionContext,
+  Type,
+} from '@nestjs/common';
 import {
   ApiBadRequestResponse,
   ApiExtraModels,
@@ -13,8 +18,9 @@ import {
   getSchemaPath,
 } from '@nestjs/swagger';
 import { ParameterObject } from '@nestjs/swagger/dist/interfaces/open-api-spec.interface';
+import { Request } from 'express';
 
-import { PageDto } from '../../query';
+import { QueryDtoPage } from '../../dto';
 import { SWAGGER_API_PARAMETERS_METADATA_KEY } from '../constants';
 import {
   NestApiEntitiesDocument,
@@ -23,6 +29,17 @@ import {
   NestApiRelationshipDocument,
   NestApiRelationshipsDocument,
 } from '../models';
+
+export const SilentQuery = createParamDecorator(
+  (data: string | undefined, ctx: ExecutionContext) => {
+    const request: Request = ctx.switchToHttp().getRequest();
+    if (data) {
+      return request.query[data];
+    } else {
+      return request.query;
+    }
+  },
+);
 
 export const NestApiQuery = <TModel extends Type>(
   model: TModel,
@@ -47,8 +64,8 @@ export const NestApiQuery = <TModel extends Type>(
         style: 'deepObject',
         schema: {
           properties: {
-            limit: { type: 'number', default: PageDto.DEFAULT_LIMIT },
-            offset: { type: 'number', default: PageDto.DEFAULT_OFFSET },
+            limit: { type: 'number', default: QueryDtoPage.DEFAULT_LIMIT },
+            offset: { type: 'number', default: QueryDtoPage.DEFAULT_OFFSET },
           },
         },
       },

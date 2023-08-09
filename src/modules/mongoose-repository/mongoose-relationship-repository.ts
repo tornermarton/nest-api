@@ -46,12 +46,27 @@ export class MongooseRelationshipRepository<
     });
   }
 
-  public count(id1: string): Observable<number> {
-    return from(this._model.find({ id1 }).countDocuments().exec());
+  public count(id1: string, id2set?: string[]): Observable<number> {
+    const filter = { id1 };
+
+    if (isNotNullOrUndefined(id2set)) {
+      filter['id2'] = { $in: id2set };
+    }
+
+    return from(this._model.find(filter).countDocuments().exec());
   }
 
-  public find(id1: string): Observable<Relationship[]> {
-    return from(this._model.find({ id1 }).exec()).pipe(
+  public find(id1: string, id2set?: string[]): Observable<Relationship[]> {
+    const filter = { id1 };
+
+    if (isNotNullOrUndefined(id2set)) {
+      filter['id2'] = { $in: id2set };
+    }
+
+    // TODO: add optimization if id2set has only one element
+    const req = this._model.find(filter);
+
+    return from(req.exec()).pipe(
       concatAll(),
       map((relationship) => relationship.toObject()),
       map((relationship) => this.transform(relationship)),
@@ -59,9 +74,16 @@ export class MongooseRelationshipRepository<
     );
   }
 
-  public findRelated(id1: string): Observable<TRelated[]> {
+  public findRelated(id1: string, id2set?: string[]): Observable<TRelated[]> {
+    const filter = { id1 };
+
+    if (isNotNullOrUndefined(id2set)) {
+      filter['id2'] = { $in: id2set };
+    }
+
+    // TODO: add optimization if id2set has only one element
     const req = this._model
-      .find({ id1 })
+      .find(filter)
       .populate({ path: 'id2', model: this._related.name });
 
     return from(req.exec()).pipe(
@@ -83,7 +105,7 @@ export class MongooseRelationshipRepository<
         id2: dto.id1,
       };
 
-      const req = this._model.findOneAndUpdate(
+      const req = this._inverseModel.findOneAndUpdate(
         { id1: inverseDto.id1, id2: inverseDto.id2 },
         { $setOnInsert: inverseDto },
         { upsert: true, new: true, setDefaultsOnInsert: true },
@@ -131,62 +153,41 @@ export class MongooseRelationshipRepository<
     );
   }
 
-  public read(id1: string, id2: string): Observable<Relationship | null> {
-    return from(this._model.findOne({ id1, id2 }).exec()).pipe(
-      map((result) => {
-        if (isNotNullOrUndefined(result)) {
-          const relationship = result.toObject();
-
-          return this.transform(relationship);
-        } else {
-          return result;
-        }
-      }),
-    );
-  }
-
-  public readRelated(id1: string, id2: string): Observable<TRelated | null> {
-    const req = this._model
-      .findOne({ id1, id2 })
-      .populate({ path: 'id2', model: this._related.name });
-
-    return from(req.exec()).pipe(
-      map((result) => {
-        if (isNotNullOrUndefined(result)) {
-          const relationship = result.toObject();
-
-          return this.transformRelated(relationship.id2);
-        } else {
-          return result;
-        }
-      }),
-    );
-  }
-
   private deleteInverse(
-    id1: string,
-    id2: string,
     session: ClientSession,
+    id1: string,
+    id2set?: string[],
   ): Observable<unknown> {
     if (isNotNullOrUndefined(this._inverseModel)) {
-      const req = this._inverseModel.findOneAndDelete({
-        id1: id2,
-        id2: id1,
-      });
+      const filter = { id2: id1 };
+
+      if (isNotNullOrUndefined(id2set)) {
+        filter['id1'] = { $in: id2set };
+      }
+
+      // TODO: add optimization if id2set has only one element
+      const req = this._inverseModel.deleteMany(filter);
 
       return from(req.session(session).exec());
     } else {
       return of(void 0);
     }
   }
-  public delete(id1: string, id2: string): Observable<void> {
-    const req = this._model.findOneAndDelete({ id1, id2 });
+  public delete(id1: string, id2set?: string[]): Observable<void> {
+    const filter = { id1 };
+
+    if (isNotNullOrUndefined(id2set)) {
+      filter['id2'] = { $in: id2set };
+    }
+
+    // TODO: add optimization if id2set has only one element
+    const req = this._model.deleteMany(filter);
 
     return from(this._connection.startSession()).pipe(
       concatMap((session) =>
         of(void 0).pipe(
           tap(() => session.startTransaction()),
-          concatMap(() => this.deleteInverse(id1, id2, session)),
+          concatMap(() => this.deleteInverse(session, id1, id2set)),
           concatMap(() => from(req.session(session).exec())),
           concatMap(() =>
             of(void 0).pipe(

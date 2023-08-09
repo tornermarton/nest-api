@@ -8,10 +8,7 @@ import {
   ValidationPipe,
 } from '@nestjs/common';
 
-import {
-  NestApiBodyErrorInterface,
-  NestApiQueryErrorInterface,
-} from '../api/interfaces';
+import { NestApiBodyErrorInterface, NestApiQueryErrorInterface } from '../api';
 
 export const UUID_VALIDATION_PIPE: ParseUUIDPipe = new ParseUUIDPipe({
   version: '4',

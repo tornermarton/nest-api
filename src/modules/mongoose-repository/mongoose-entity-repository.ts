@@ -6,7 +6,7 @@ import { map } from 'rxjs/operators';
 
 import { MongooseEntity } from './mongoose-entity';
 import { isNotNullOrUndefined } from '../../core';
-import { IQueryDto } from '../../query';
+import { IQueryDto } from '../../dto';
 import {
   EntityCreateDto,
   EntityRepository,

@@ -12,7 +12,7 @@ import {
   NestApiEntityDocumentLinksInterface,
 } from '../api';
 import { isNotNullOrUndefined } from '../core';
-import { IQueryDto, PageDto } from '../query';
+import { IQueryDto, QueryDtoPage } from '../dto';
 
 export function isNotEmptyEntityResponse<T>(
   response: EntityResponse<T | null | undefined>,
@@ -24,11 +24,11 @@ export function getNestApiDocumentPaging(
   request: Request,
   total?: number,
 ): NestApiDocumentPaging {
-  const page: PageDto = plainToInstance(
-    PageDto,
+  const page: QueryDtoPage = plainToInstance(
+    QueryDtoPage,
     request.query.page ?? {
-      limit: PageDto.DEFAULT_LIMIT,
-      offset: PageDto.DEFAULT_OFFSET,
+      limit: QueryDtoPage.DEFAULT_LIMIT,
+      offset: QueryDtoPage.DEFAULT_OFFSET,
     },
   );
 

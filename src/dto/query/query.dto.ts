@@ -10,7 +10,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 
-export class PageDto {
+export class QueryDtoPage {
   public static DEFAULT_LIMIT: number = 100;
   public static DEFAULT_OFFSET: number = 0;
 
@@ -18,13 +18,13 @@ export class PageDto {
   @IsInt()
   @Min(0)
   @TransformType(() => Number)
-  public readonly limit: number = PageDto.DEFAULT_LIMIT;
+  public readonly limit: number = QueryDtoPage.DEFAULT_LIMIT;
 
   @IsOptional()
   @IsInt()
   @Min(0)
   @TransformType(() => Number)
-  public readonly offset: number = PageDto.DEFAULT_OFFSET;
+  public readonly offset: number = QueryDtoPage.DEFAULT_OFFSET;
 }
 
 export interface IQueryDto<
@@ -32,7 +32,7 @@ export interface IQueryDto<
   TFilter,
   TExpand extends Extract<keyof TModel, string>,
 > {
-  readonly page: PageDto;
+  readonly page: QueryDtoPage;
   readonly filter: TFilter;
   readonly expand: TExpand[];
   readonly sort: string[];
@@ -82,8 +82,8 @@ export function QueryDto<
   class QueryDtoClass implements IQueryDto<TModel, TFilter, TExpand> {
     @IsOptional()
     @ValidateNested()
-    @TransformType(() => PageDto)
-    public readonly page: PageDto = new PageDto();
+    @TransformType(() => QueryDtoPage)
+    public readonly page: QueryDtoPage = new QueryDtoPage();
 
     @IsOptional()
     @IsObject()
