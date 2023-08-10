@@ -81,20 +81,10 @@ export class EntityManager<
   private populateRelationships(
     entity: TEntity,
   ): Observable<Record<keyof TEntity, unknown>> {
-    return from(Object.entries(this._relationships)).pipe(
-      map(([key, definition]) =>
-        definition.repository.find(entity.id).pipe(
-          concatAll(),
-          map((relationship) => relationship.id2),
-          toArray(),
-          map((ids) => {
-            if (definition.descriptor.kind === 'toOne') {
-              return ids.length > 0 ? ids[0] : undefined;
-            } else {
-              return ids;
-            }
-          }),
-          map((ids) => ({ [key]: ids })),
+    return from(Object.keys(this._relationships) as TRelationships[]).pipe(
+      map((key) =>
+        this.findRelationship(key, entity.id).pipe(
+          map((r) => ({ [key]: r.data })),
         ),
       ),
       toArray(),
@@ -200,9 +190,9 @@ export class EntityManager<
       toArray(),
     );
 
-    const count$: Observable<number> = options?.count
+    const count$: Observable<number | undefined> = options?.count
       ? repository.count(id1)
-      : EMPTY;
+      : of(undefined);
 
     return forkJoin([ids$, count$]).pipe(
       map(([ids, total]) => {
