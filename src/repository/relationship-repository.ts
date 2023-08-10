@@ -20,8 +20,11 @@ export abstract class RelationshipRepository<TRelated extends Entity = Entity> {
     id2set?: string[],
   ): Observable<TRelated[]>;
 
-  // TODO: maybe allow batch operations
-  public abstract create(dto: RelationshipCreateDto): Observable<Relationship>;
+  public abstract create(
+    id1: string,
+    id2set: string[],
+    createdBy: string,
+  ): Observable<Relationship[]>;
 
   public abstract delete(id1: string, id2set?: string[]): Observable<void>;
 }

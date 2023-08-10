@@ -77,7 +77,7 @@ function createRelationshipModel(
         default: uuid,
       },
     })
-    .index({ id1: 1, id2: 1 })
+    .index({ id1: 1, id2: 1 }, { unique: true })
     .set('timestamps', true) as Schema<MongooseRelationship>;
 
   return connection.model<MongooseRelationship>(name, schema);

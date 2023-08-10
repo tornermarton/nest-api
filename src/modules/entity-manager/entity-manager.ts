@@ -19,7 +19,6 @@ import {
   EntityCreateDto,
   EntityRepository,
   EntityUpdateDto,
-  RelationshipCreateDto,
   RelationshipDescriptor,
   RelationshipRepository,
 } from '../../repository';
@@ -47,6 +46,9 @@ export type EntityManagerDefinition<
   entity: EntityManagerEntityDefinition<TEntity>;
   relationships?: Record<TRelationships, EntityManagerRelationshipDefinition>;
 };
+
+// TODO: maybe move this logic to relationship repo?
+type TypedId2Set<T> = [T] extends [Array<unknown>] ? string[] : [string];
 
 type TypedRelationshipResponse<T> = [T] extends [Array<unknown>]
   ? RelationshipsResponse
@@ -218,21 +220,34 @@ export class EntityManager<
 
   public createRelationship<TKey extends TRelationships>(
     key: TKey,
-    dto: RelationshipCreateDto,
-  ): Observable<RelationshipResponse> {
+    id1: string,
+    id2set: TypedId2Set<TEntity[TKey]>,
+    createdBy: string,
+  ): Observable<TypedRelationshipResponse<TEntity[TKey]>> {
     const { descriptor, repository } = this._relationships[key];
-    const { target } = descriptor;
+    const { kind, target } = descriptor;
 
-    return repository.create(dto).pipe(
+    return repository.create(id1, id2set, createdBy).pipe(
+      concatAll(),
       map((relationship) => relationship.id2),
-      map((id) => new RelationshipResponse(target, id)),
+      toArray(),
+      map((ids) => {
+        if (kind === 'toOne') {
+          const id = ids.length > 0 ? ids[0] : undefined;
+
+          return new RelationshipResponse(target, id);
+        } else {
+          return new RelationshipsResponse(target, ids);
+        }
+      }),
+      map((r) => r as TypedRelationshipResponse<TEntity[TKey]>),
     );
   }
 
   public deleteRelationship<TKey extends TRelationships>(
     key: TKey,
     id1: string,
-    id2set: string[],
+    id2set: TypedId2Set<TEntity[TKey]>,
   ): Observable<void> {
     const { repository } = this._relationships[key];
 

@@ -17,10 +17,7 @@ import { map } from 'rxjs/operators';
 import { MongooseEntity } from './mongoose-entity';
 import { MongooseRelationship } from './mongoose-relationship';
 import { isNotNullOrUndefined, Relationship } from '../../core';
-import {
-  RelationshipCreateDto,
-  RelationshipRepository,
-} from '../../repository';
+import { RelationshipRepository } from '../../repository';
 
 export class MongooseRelationshipRepository<
   TRelated extends MongooseEntity,
@@ -95,48 +92,63 @@ export class MongooseRelationshipRepository<
   }
 
   private createInverse(
-    dto: RelationshipCreateDto,
     session: ClientSession,
+    id1: string,
+    id2set: string[],
+    createdBy: string,
   ): Observable<unknown> {
     if (isNotNullOrUndefined(this._inverseModel)) {
-      const inverseDto: RelationshipCreateDto = {
-        ...dto,
-        id1: dto.id2,
-        id2: dto.id1,
-      };
+      const queries = id2set
+        .map((id2) => ({
+          id1: id2,
+          id2: id1,
+          createdBy,
+          updatedBy: createdBy,
+        }))
+        .map((dto) => ({
+          updateOne: {
+            filter: { id1: dto.id1, id2: dto.id2 },
+            update: { $setOnInsert: dto },
+            upsert: true,
+          },
+        }));
 
-      const req = this._inverseModel.findOneAndUpdate(
-        { id1: inverseDto.id1, id2: inverseDto.id2 },
-        { $setOnInsert: inverseDto },
-        { upsert: true, new: true, setDefaultsOnInsert: true },
-      );
-
-      return from(req.session(session).exec());
+      return from(this._inverseModel.bulkWrite(queries, { session }));
     } else {
       return of(void 0);
     }
   }
 
-  public create(dto: RelationshipCreateDto): Observable<Relationship> {
-    const req = this._model.findOneAndUpdate(
-      { id1: dto.id1, id2: dto.id2 },
-      { $setOnInsert: dto },
-      { upsert: true, new: true, setDefaultsOnInsert: true },
-    );
+  public create(
+    id1: string,
+    id2set: string[],
+    createdBy: string,
+  ): Observable<Relationship[]> {
+    const queries = id2set
+      .map((id2) => ({
+        id1,
+        id2,
+        createdBy,
+        updatedBy: createdBy,
+      }))
+      .map((dto) => ({
+        updateOne: {
+          filter: { id1: dto.id1, id2: dto.id2 },
+          update: { $setOnInsert: dto },
+          upsert: true,
+        },
+      }));
 
     return from(this._connection.startSession()).pipe(
       concatMap((session) =>
         of(void 0).pipe(
           tap(() => session.startTransaction()),
-          concatMap(() => from(req.session(session).exec())),
-          concatMap((relationship) =>
-            this.createInverse(dto, session).pipe(map(() => relationship)),
-          ),
-          concatMap((relationship) =>
+          concatMap(() => from(this._model.bulkWrite(queries, { session }))),
+          concatMap(() => this.createInverse(session, id1, id2set, createdBy)),
+          concatMap(() =>
             of(void 0).pipe(
               concatMap(() => from(session.commitTransaction())),
               concatMap(() => from(session.endSession())),
-              map(() => relationship),
             ),
           ),
           catchError((error) =>
@@ -148,8 +160,7 @@ export class MongooseRelationshipRepository<
           ),
         ),
       ),
-      map((relationship) => relationship.toObject()),
-      map((relationship) => this.transform(relationship)),
+      concatMap(() => this.find(id1, id2set)),
     );
   }
 
