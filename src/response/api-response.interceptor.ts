@@ -33,17 +33,16 @@ import {
 } from './utils';
 import {
   getEntityMetadata,
-  NestApiDocumentInterface,
+  NestApiResponseDocumentInterface,
   NestApiDocumentMetaInterface,
   NestApiEntityMetadata,
-  NestApiResourceIdentifier,
+  NestApiResourceIdentifierInterface,
   NestApiResourceInterface,
   NestApiResourceRelationshipInterface,
   NestApiResourceRelationshipToManyLinksInterface,
   NestApiResourceRelationshipToOneLinksInterface,
 } from '../api';
 import { isNotNullOrUndefined } from '../core';
-import { QueryDtoPage } from '../dto';
 
 type ApiResponseInterceptorOptions = {
   exclude: { path: string; method: RequestMethod }[];
@@ -90,15 +89,15 @@ export class NestApiEntityResourceBuilder {
   private createRelationshipToManyLinks(
     type: string,
   ): NestApiResourceRelationshipToManyLinksInterface {
-    // TODO: add correct links for ToMany
-    const limit: number = QueryDtoPage.DEFAULT_LIMIT;
-    const offset: number = QueryDtoPage.DEFAULT_OFFSET;
-    const nextOffset: number = offset + limit;
+    // TODO: add paging links for ToMany
+    // const limit: number = QueryDtoPage.DEFAULT_LIMIT;
+    // const offset: number = QueryDtoPage.DEFAULT_OFFSET;
+    // const nextOffset: number = offset + limit;
 
     return {
       ...this.createRelationshipToOneLinks(type),
-      first: `${this.getSelfPath()}/relationships/${type}?page[limit]=${limit}&page[offset]=${offset}`,
-      next: `${this.getSelfPath()}/relationships/${type}?page[limit]=${limit}&page[offset]=${nextOffset}`,
+      // first: `${this.getSelfPath()}/relationships/${type}?page[limit]=${limit}&page[offset]=${offset}`,
+      // next: `${this.getSelfPath()}/relationships/${type}?page[limit]=${limit}&page[offset]=${nextOffset}`,
     };
   }
 
@@ -151,7 +150,7 @@ export class NestApiEntityResourceBuilder {
 
 @Injectable()
 export class ApiResponseInterceptor
-  implements NestInterceptor<unknown, NestApiDocumentInterface>
+  implements NestInterceptor<unknown, NestApiResponseDocumentInterface>
 {
   public static forRoot(
     options?: ApiResponseInterceptorOptions,
@@ -223,7 +222,7 @@ export class ApiResponseInterceptor
   private transformRelationship<T>(
     type: Type<T>,
     data?: string,
-  ): NestApiResourceIdentifier | null {
+  ): NestApiResourceIdentifierInterface | null {
     if (isNotNullOrUndefined(data)) {
       const metadata: NestApiEntityMetadata = getEntityMetadata(type.prototype);
 
@@ -236,7 +235,7 @@ export class ApiResponseInterceptor
   public intercept(
     context: ExecutionContext,
     next: CallHandler,
-  ): Observable<NestApiDocumentInterface> {
+  ): Observable<NestApiResponseDocumentInterface> {
     const adapter: AbstractHttpAdapter = this.httpAdapterHost.httpAdapter;
     const request: Request = context.switchToHttp().getRequest<Request>();
     const response: Response = context.switchToHttp().getResponse<Response>();

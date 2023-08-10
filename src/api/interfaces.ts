@@ -79,27 +79,35 @@ export type NestApiEntitiesDocumentInterface =
     readonly links: NestApiEntitiesDocumentLinksInterface;
   };
 
-export type NestApiRelationshipDocumentLinksInterface =
+export type NestApiRelationshipRequestDocumentInterface = {
+  readonly data: NestApiResourceIdentifierInterface | null;
+};
+
+export type NestApiRelationshipResponseDocumentLinksInterface =
   NestApiCommonDocumentLinksInterface & {
     readonly related: string;
   };
 
-export type NestApiRelationshipDocumentInterface =
+export type NestApiRelationshipResponseDocumentInterface =
   NestApiCommonDocumentInterface & {
     readonly data: NestApiResourceIdentifierInterface | null;
-    readonly links: NestApiRelationshipDocumentLinksInterface;
+    readonly links: NestApiRelationshipResponseDocumentLinksInterface;
   };
 
-export type NestApiRelationshipsDocumentLinksInterface =
+export type NestApiRelationshipsRequestDocumentInterface = {
+  readonly data: NestApiResourceIdentifierInterface[];
+};
+
+export type NestApiRelationshipsResponseDocumentLinksInterface =
   NestApiCommonDocumentLinksInterface &
     NestApiPaginationLinksInterface & {
       readonly related: string;
     };
 
-export type NestApiRelationshipsDocumentInterface =
+export type NestApiRelationshipsResponseDocumentInterface =
   NestApiCommonDocumentInterface & {
     readonly data: NestApiResourceIdentifierInterface[];
-    readonly links: NestApiRelationshipsDocumentLinksInterface;
+    readonly links: NestApiRelationshipsResponseDocumentLinksInterface;
   };
 
 type NestApiCommonErrorInterface = {
@@ -145,7 +153,11 @@ export type NestApiErrorDocumentInterface = NestApiCommonDocumentInterface & {
   readonly links: NestApiErrorDocumentLinksInterface;
 };
 
-export type NestApiDocumentInterface =
+export type NestApiRequestDocumentInterface =
+  | NestApiRelationshipRequestDocumentInterface
+  | NestApiRelationshipsRequestDocumentInterface;
+
+export type NestApiResponseDocumentInterface =
   | NestApiEmptyDocumentInterface
   | NestApiEntityDocumentInterface
   | NestApiEntitiesDocumentInterface

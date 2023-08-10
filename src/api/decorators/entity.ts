@@ -1,3 +1,4 @@
+import { Type } from '@nestjs/common';
 import { ApiProperty, ApiPropertyOptions } from '@nestjs/swagger';
 import { Expose } from 'class-transformer';
 
@@ -79,16 +80,17 @@ export function NestApiAttributeProperty(
 
 export function NestApiRelationshipProperty(
   // eslint-disable-next-line @typescript-eslint/ban-types
-  options: ApiPropertyOptions & { type: () => Function },
+  options: ApiPropertyOptions & { type: () => Type },
 ): PropertyDecorator {
   // eslint-disable-next-line @typescript-eslint/ban-types
   return (target: Object, propertyKey: string | symbol): void => {
     Expose()(target, propertyKey);
     ApiProperty({
       ...options,
-      type: options.isArray
-        ? NestApiResourceRelationshipToMany
-        : NestApiResourceRelationshipToOne,
+      type: () =>
+        options.isArray
+          ? NestApiResourceRelationshipToMany(options.type())
+          : NestApiResourceRelationshipToOne(options.type()),
       isArray: false,
     })(target, propertyKey);
 

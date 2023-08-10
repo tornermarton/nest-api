@@ -1,4 +1,3 @@
-import { plainToInstance } from 'class-transformer';
 import { Request } from 'express';
 import { parse, stringify } from 'qs';
 
@@ -6,7 +5,7 @@ import { EntityResponse } from './models';
 import {
   NestApiDocumentPaging,
   NestApiPaginationLinksInterface,
-  NestApiRelationshipDocumentLinks,
+  NestApiRelationshipResponseDocumentLinks,
   NestApiCommonDocumentLinksInterface,
   NestApiEntitiesDocumentLinksInterface,
   NestApiEntityDocumentLinksInterface,
@@ -24,15 +23,13 @@ export function getNestApiDocumentPaging(
   request: Request,
   total?: number,
 ): NestApiDocumentPaging {
-  const page: QueryDtoPage = plainToInstance(
-    QueryDtoPage,
-    request.query.page ?? {
-      limit: QueryDtoPage.DEFAULT_LIMIT,
-      offset: QueryDtoPage.DEFAULT_OFFSET,
-    },
-  );
+  const defaults = {
+    limit: QueryDtoPage.DEFAULT_LIMIT,
+    offset: QueryDtoPage.DEFAULT_OFFSET,
+  };
+  const page = request.query.page ?? defaults;
 
-  return { limit: page.limit, offset: page.offset, total };
+  return { ...page, total };
 }
 
 function getSelfLink(request: Request): string {
@@ -56,7 +53,7 @@ export function getNestApiEntityDocumentLinks(
 
 export function getNestApiRelationshipDocumentLinks(
   request: Request,
-): NestApiRelationshipDocumentLinks {
+): NestApiRelationshipResponseDocumentLinks {
   const links = getNestApiCommonDocumentLinks(request);
 
   return {
@@ -143,7 +140,7 @@ export function getNestApiEntitiesDocumentLinks(
 export function getNestApiRelationshipsDocumentLinks(
   request: Request,
   total = Infinity,
-): NestApiRelationshipDocumentLinks {
+): NestApiRelationshipResponseDocumentLinks {
   const commonLinks = getNestApiCommonDocumentLinks(request);
 
   const { self } = commonLinks;

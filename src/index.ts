@@ -5,4 +5,5 @@ export * from './core';
 export * from './dto';
 export * from './modules';
 export * from './repository';
+export * from './request';
 export * from './response';

@@ -2,17 +2,15 @@ import {
   BadRequestException,
   HttpException,
   HttpStatus,
-  ParseUUIDPipe,
+  NotFoundException,
   UnprocessableEntityException,
   ValidationError,
-  ValidationPipe,
 } from '@nestjs/common';
 
 import { NestApiBodyErrorInterface, NestApiQueryErrorInterface } from '../api';
 
-export const UUID_VALIDATION_PIPE: ParseUUIDPipe = new ParseUUIDPipe({
-  version: '4',
-});
+export const UUID_VALIDATION_EXCEPTION_FACTORY = (): HttpException =>
+  new NotFoundException();
 
 function processQueryErrors(
   errors: ValidationError[],
@@ -39,15 +37,10 @@ function processQueryErrors(
     .flat();
 }
 
-export const QUERY_VALIDATION_PIPE: ValidationPipe = new ValidationPipe({
-  transform: true,
-  transformOptions: { exposeDefaultValues: true },
-  whitelist: true,
-  forbidNonWhitelisted: true,
-  validateCustomDecorators: true,
-  exceptionFactory: (errors: ValidationError[]): HttpException =>
-    new BadRequestException({ errors: processQueryErrors(errors) }),
-});
+export const QUERY_VALIDATION_EXCEPTION_FACTORY = (
+  errors: ValidationError[],
+): HttpException =>
+  new BadRequestException({ errors: processQueryErrors(errors) });
 
 function processBodyErrors(
   errors: ValidationError[],
@@ -73,12 +66,7 @@ function processBodyErrors(
     .reduce((acc, e) => [...acc, ...e], []);
 }
 
-export const BODY_VALIDATION_PIPE: ValidationPipe = new ValidationPipe({
-  transform: true,
-  transformOptions: { exposeDefaultValues: true },
-  whitelist: true,
-  forbidNonWhitelisted: true,
-  validateCustomDecorators: true,
-  exceptionFactory: (errors: ValidationError[]): HttpException =>
-    new UnprocessableEntityException({ errors: processBodyErrors(errors) }),
-});
+export const BODY_VALIDATION_EXCEPTION_FACTORY = (
+  errors: ValidationError[],
+): HttpException =>
+  new UnprocessableEntityException({ errors: processBodyErrors(errors) });
