@@ -7,8 +7,8 @@ import {
   NestApiPaginationLinksInterface,
   NestApiRelationshipResponseDocumentLinks,
   NestApiCommonDocumentLinksInterface,
-  NestApiEntitiesDocumentLinksInterface,
-  NestApiEntityDocumentLinksInterface,
+  NestApiEntitiesResponseDocumentLinksInterface,
+  NestApiEntityResponseDocumentLinksInterface,
 } from '../api';
 import { isNotNullOrUndefined } from '../core';
 import { IQueryDto, QueryDtoPage } from '../dto';
@@ -47,7 +47,7 @@ export function getNestApiCommonDocumentLinks(
 
 export function getNestApiEntityDocumentLinks(
   request: Request,
-): NestApiEntityDocumentLinksInterface {
+): NestApiEntityResponseDocumentLinksInterface {
   return getNestApiCommonDocumentLinks(request);
 }
 
@@ -128,7 +128,7 @@ function getNestApiPaginationLinks(
 export function getNestApiEntitiesDocumentLinks(
   request: Request,
   total = Infinity,
-): NestApiEntitiesDocumentLinksInterface {
+): NestApiEntitiesResponseDocumentLinksInterface {
   const commonLinks = getNestApiCommonDocumentLinks(request);
 
   const { self } = commonLinks;

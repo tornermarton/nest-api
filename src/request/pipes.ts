@@ -11,6 +11,7 @@ import {
   UUID_VALIDATION_EXCEPTION_FACTORY,
 } from './exception-factories';
 import {
+  NestApiEntityRequestDocumentInterface,
   NestApiRequestDocumentInterface,
   NestApiResourceIdentifierInterface,
 } from '../api';
@@ -55,6 +56,14 @@ export class NestApiRequestBodyDataTransformationPipe
 {
   public transform(value: NestApiRequestDocumentInterface): unknown {
     return value.data;
+  }
+}
+
+export class NestApiEntityRequestBodyTransformationPipe
+  implements PipeTransform<NestApiEntityRequestDocumentInterface>
+{
+  public transform(value: NestApiEntityRequestDocumentInterface): unknown {
+    return value;
   }
 }
 

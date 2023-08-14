@@ -21,6 +21,7 @@ import {
   NestApiEntityMetadata,
   NestApiEntityPropertiesMetadata,
 } from './metadata';
+import { isNotNullOrUndefined } from '../core';
 
 function renameType(type: Type, name: string): void {
   Object.defineProperty(type, 'name', {
@@ -29,22 +30,36 @@ function renameType(type: Type, name: string): void {
   });
 }
 
-export function NestApiResourceIdentifier(type: Type): Type {
+export function NestApiResourceType(type: Type): Type {
   const { name } = type;
 
   const metadata: NestApiEntityMetadata = getEntityMetadata(type.prototype);
 
-  class NestApiResourceIdentifierClass {
-    @ApiProperty()
-    @IsNotEmpty()
-    @IsUUID(4)
-    public readonly id: string;
-
+  class NestApiResourceTypeClass {
     @ApiProperty({ enum: [metadata.type] })
     @IsNotEmpty()
     @Equals(metadata.type)
     public readonly type: string;
   }
+  renameType(NestApiResourceTypeClass, `${name}ResourceType`);
+
+  return NestApiResourceTypeClass;
+}
+
+export function NestApiResourceIdentifier(type: Type): Type {
+  const { name } = type;
+
+  class NestApiResourceIdClass {
+    @ApiProperty()
+    @IsNotEmpty()
+    @IsUUID(4)
+    public readonly id: string;
+  }
+
+  class NestApiResourceIdentifierClass extends IntersectionType(
+    NestApiResourceIdClass,
+    NestApiResourceType(type),
+  ) {}
   renameType(NestApiResourceIdentifierClass, `${name}ResourceIdentifier`);
 
   return NestApiResourceIdentifierClass;
@@ -85,19 +100,37 @@ export class NestApiCommonResourceRelationshipLinks {
 
 export class NestApiResourceRelationshipToOneLinks extends NestApiCommonResourceRelationshipLinks {}
 
-export function NestApiResourceRelationshipToOne(type: Type): Type {
+export function NestApiResourceRelationshipToOne(
+  type: Type,
+  options?: { omitLinks?: boolean },
+): Type {
   const { name } = type;
+  const resourceTypes: Type[] = [];
 
   class ResourceIdentifier extends NestApiResourceIdentifier(type) {}
   renameType(ResourceIdentifier, `${name}ResourceIdentifier`);
 
-  class NestApiResourceRelationshipToOneClass {
-    @ApiProperty({ type: ResourceIdentifier })
-    public readonly data: ResourceIdentifier;
-
-    @ApiProperty({ type: NestApiResourceRelationshipToOneLinks })
-    public readonly links: NestApiResourceRelationshipToOneLinks;
+  class RelationshipToOneData {
+    @ApiProperty({ type: ResourceIdentifier, nullable: true })
+    public readonly data: ResourceIdentifier | null;
   }
+  resourceTypes.push(RelationshipToOneData);
+
+  if (!options?.omitLinks) {
+    class RelationshipToOneLinks {
+      @ApiProperty({ type: NestApiResourceRelationshipToOneLinks })
+      public readonly links: NestApiResourceRelationshipToOneLinks;
+    }
+    resourceTypes.push(RelationshipToOneLinks);
+  }
+
+  class NestApiResourceRelationshipToOneClass extends IntersectionType(
+    ...resourceTypes,
+  ) {}
+  renameType(
+    NestApiResourceRelationshipToOneClass,
+    `NestApiResourceRelationshipToOne${name}`,
+  );
 
   return NestApiResourceRelationshipToOneClass;
 }
@@ -107,19 +140,37 @@ export class NestApiResourceRelationshipToManyLinks extends IntersectionType(
   NestApiPaginationLinks,
 ) {}
 
-export function NestApiResourceRelationshipToMany(type: Type): Type {
+export function NestApiResourceRelationshipToMany(
+  type: Type,
+  options?: { omitLinks?: boolean },
+): Type {
   const { name } = type;
+  const resourceTypes: Type[] = [];
 
   class ResourceIdentifier extends NestApiResourceIdentifier(type) {}
   renameType(ResourceIdentifier, `${name}ResourceIdentifier`);
 
-  class NestApiResourceRelationshipToManyClass {
+  class RelationshipToManyData {
     @ApiProperty({ type: ResourceIdentifier, isArray: true })
     public readonly data: ResourceIdentifier[];
-
-    @ApiProperty({ type: NestApiResourceRelationshipToOneLinks })
-    public readonly links: NestApiResourceRelationshipToOneLinks;
   }
+  resourceTypes.push(RelationshipToManyData);
+
+  if (!options?.omitLinks) {
+    class RelationshipToManyLinks {
+      @ApiProperty({ type: NestApiResourceRelationshipToManyLinks })
+      public readonly links: NestApiResourceRelationshipToManyLinks;
+    }
+    resourceTypes.push(RelationshipToManyLinks);
+  }
+
+  class NestApiResourceRelationshipToManyClass extends IntersectionType(
+    ...resourceTypes,
+  ) {}
+  renameType(
+    NestApiResourceRelationshipToManyClass,
+    `NestApiResourceRelationshipToMany${name}`,
+  );
 
   return NestApiResourceRelationshipToManyClass;
 }
@@ -129,17 +180,28 @@ export class NestApiResourceLinks {
   public readonly self: string;
 }
 
-export function NestApiResource(type: Type): Type {
-  const name: string = type.name;
+export function NestApiResource(
+  type: Type,
+  options?: { omitLinks?: boolean },
+): Type {
+  const resourceName: string = type.name;
   const metadata: NestApiEntityMetadata = getEntityMetadata(type.prototype);
   const properties: NestApiEntityPropertiesMetadata = metadata.properties;
-  const resourceTypes: Type[] = [NestApiResourceIdentifier(type)];
+  const resourceTypes: Type[] = [];
+
+  // identifier
+  if (isNotNullOrUndefined(metadata.properties.id)) {
+    resourceTypes.push(NestApiResourceIdentifier(type));
+  } else {
+    resourceTypes.push(NestApiResourceType(type));
+  }
+  // identifier
 
   // attributes
   const attributes: string[] = properties.attributes.map((e) => e.name);
   if (attributes.length > 0) {
     class ResourceAttributes extends PickType(type, attributes) {}
-    renameType(ResourceAttributes, `${name}Attributes`);
+    renameType(ResourceAttributes, `${resourceName}Attributes`);
 
     class ResourceWithAttributes {
       @ApiProperty({ type: ResourceAttributes })
@@ -151,9 +213,25 @@ export function NestApiResource(type: Type): Type {
 
   // relationships
   const relationships: string[] = properties.relationships.map((e) => e.name);
-  if (relationships.length > 0) {
+  if (properties.relationships.length > 0) {
     class ResourceRelationships extends PickType(type, relationships) {}
-    renameType(ResourceRelationships, `${name}Relationships`);
+    renameType(ResourceRelationships, `${resourceName}Relationships`);
+
+    for (const { name, type, kind, openapi } of properties.relationships) {
+      const model: Type =
+        kind === 'toMany'
+          ? NestApiResourceRelationshipToMany(type(), options)
+          : NestApiResourceRelationshipToOne(type(), options);
+      const kindSection: string =
+        kind.slice(0, 1).toUpperCase() + kind.slice(1);
+      renameType(model, `${resourceName}Relationship${kindSection}${name}`);
+
+      ApiProperty({
+        ...openapi,
+        type: model,
+        isArray: false,
+      })(ResourceRelationships.prototype, name);
+    }
 
     class ResourceWithRelationships {
       @ApiProperty({ type: ResourceRelationships })
@@ -167,7 +245,7 @@ export function NestApiResource(type: Type): Type {
   const meta: string[] = properties.meta.map((e) => e.name);
   if (meta.length > 0) {
     class ResourceMeta extends PickType(type, meta) {}
-    renameType(ResourceMeta, `${name}Meta`);
+    renameType(ResourceMeta, `${resourceName}Meta`);
 
     class ResourceWithMeta {
       @ApiProperty({ type: ResourceMeta })
@@ -178,15 +256,17 @@ export function NestApiResource(type: Type): Type {
   // meta
 
   // links
-  class ResourceWithLinks {
-    @ApiProperty({ type: NestApiResourceLinks })
-    public readonly links: NestApiResourceLinks;
+  if (!options?.omitLinks) {
+    class ResourceWithLinks {
+      @ApiProperty({ type: NestApiResourceLinks })
+      public readonly links: NestApiResourceLinks;
+    }
+    resourceTypes.push(ResourceWithLinks);
   }
-  resourceTypes.push(ResourceWithLinks);
   // links
 
   class Resource extends IntersectionType(...resourceTypes) {}
-  renameType(Resource, name);
+  renameType(Resource, resourceName);
 
   return Resource;
 }
@@ -216,9 +296,26 @@ export class NestApiEmptyDocument extends NestApiCommonDocument {
   public readonly links: NestApiEmptyDocumentLinks;
 }
 
-export class NestApiEntityDocumentLinks extends NestApiCommonDocumentLinks {}
+export function NestApiEntityRequestDocument(type: Type): Type {
+  const name: string = type.name;
 
-export function NestApiEntityDocument(type: Type): Type {
+  class Resource extends NestApiResource(type, { omitLinks: true }) {}
+  renameType(Resource, name);
+
+  class Document {
+    @ApiProperty({ type: Resource })
+    @ValidateNested()
+    @TransformType(() => Resource)
+    public readonly data: Resource;
+  }
+  renameType(Document, `${name}EntityRequestDocument`);
+
+  return Document;
+}
+
+export class NestApiEntityResponseDocumentLinks extends NestApiCommonDocumentLinks {}
+
+export function NestApiEntityResponseDocument(type: Type): Type {
   const name: string = type.name;
 
   class Resource extends NestApiResource(type) {}
@@ -228,20 +325,20 @@ export function NestApiEntityDocument(type: Type): Type {
     @ApiProperty({ type: Resource })
     public readonly data: Resource;
 
-    @ApiProperty({ type: NestApiEntityDocumentLinks })
-    public readonly links: NestApiEntityDocumentLinks;
+    @ApiProperty({ type: NestApiEntityResponseDocumentLinks })
+    public readonly links: NestApiEntityResponseDocumentLinks;
   }
-  renameType(Document, `${name}EntityDocument`);
+  renameType(Document, `${name}EntityResponseDocument`);
 
   return Document;
 }
 
-export class NestApiEntitiesDocumentLinks extends IntersectionType(
+export class NestApiEntitiesResponseDocumentLinks extends IntersectionType(
   NestApiCommonDocumentLinks,
   NestApiPaginationLinks,
 ) {}
 
-export function NestApiEntitiesDocument(type: Type): Type {
+export function NestApiEntitiesResponseDocument(type: Type): Type {
   const name: string = type.name;
 
   class Resource extends NestApiResource(type) {}
@@ -251,13 +348,13 @@ export function NestApiEntitiesDocument(type: Type): Type {
     @ApiProperty({ type: Resource, isArray: true })
     public readonly data: Resource[];
 
-    @ApiProperty({ type: NestApiEntityDocumentLinks })
-    public readonly links: NestApiEntityDocumentLinks;
+    @ApiProperty({ type: NestApiEntityResponseDocumentLinks })
+    public readonly links: NestApiEntityResponseDocumentLinks;
 
     @ApiProperty({ type: NestApiDocumentPaging })
     public readonly paging: NestApiDocumentPaging;
   }
-  renameType(Document, `${name}EntitiesDocument`);
+  renameType(Document, `${name}EntitiesResponseDocument`);
 
   return Document;
 }

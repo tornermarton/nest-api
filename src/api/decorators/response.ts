@@ -13,8 +13,8 @@ import {
 } from '@nestjs/swagger';
 
 import {
-  NestApiEntitiesDocument,
-  NestApiEntityDocument,
+  NestApiEntitiesResponseDocument,
+  NestApiEntityResponseDocument,
   NestApiErrorDocument,
   NestApiRelationshipResponseDocument,
   NestApiRelationshipsResponseDocument,
@@ -24,7 +24,7 @@ export const NestApiEntityResponse = <TModel extends Type>(
   model: TModel,
   options?: ApiResponseOptions,
 ): MethodDecorator => {
-  const document: Type = NestApiEntityDocument(model);
+  const document: Type = NestApiEntityResponseDocument(model);
 
   return applyDecorators(
     ApiExtraModels(document),
@@ -40,7 +40,7 @@ export const NestApiEntitiesResponse = <TModel extends Type>(
   model: TModel,
   options?: ApiResponseOptions,
 ): MethodDecorator => {
-  const document: Type = NestApiEntitiesDocument(model);
+  const document: Type = NestApiEntitiesResponseDocument(model);
 
   return applyDecorators(
     ApiExtraModels(document),

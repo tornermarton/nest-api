@@ -42,7 +42,7 @@ import {
   NestApiResourceRelationshipToManyLinksInterface,
   NestApiResourceRelationshipToOneLinksInterface,
 } from '../api';
-import { isNotNullOrUndefined } from '../core';
+import { isNotNullOrUndefined, isNullOrUndefined } from '../core';
 
 type ApiResponseInterceptorOptions = {
   exclude: { path: string; method: RequestMethod }[];
@@ -177,6 +177,13 @@ export class ApiResponseInterceptor
   ): NestApiResourceInterface {
     const metadata: NestApiEntityMetadata = getEntityMetadata(entity);
 
+    if (isNullOrUndefined(metadata.properties.id)) {
+      // TODO: lib error
+      throw new Error(
+        `Response entity [${entity.name}] must have an ID property decorated with @NestApiEntityId()`,
+      );
+    }
+
     // TODO: might be a good idea to check type in the decorator
     const id: string = entity[metadata.properties.id.name];
     const type: string = metadata.type;
@@ -196,12 +203,12 @@ export class ApiResponseInterceptor
       builder.attribute(name, obj[name]);
     }
 
-    for (const { name, type, isArray } of metadata.properties.relationships) {
+    for (const { name, type, kind } of metadata.properties.relationships) {
       const relationshipMetadata: NestApiEntityMetadata = getEntityMetadata(
         type().prototype,
       );
 
-      if (isArray) {
+      if (kind === 'toMany') {
         builder.relationshipToMany(
           name,
           relationshipMetadata.type,

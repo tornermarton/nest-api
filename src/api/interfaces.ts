@@ -62,21 +62,26 @@ export type NestApiCommonDocumentLinksInterface = {
   readonly self: string;
 };
 
-export type NestApiEntityDocumentLinksInterface =
-  NestApiCommonDocumentLinksInterface;
-
-export type NestApiEntityDocumentInterface = NestApiCommonDocumentInterface & {
+export type NestApiEntityRequestDocumentInterface = {
   readonly data: NestApiResourceInterface;
-  readonly links: NestApiEntityDocumentLinksInterface;
 };
 
-export type NestApiEntitiesDocumentLinksInterface =
+export type NestApiEntityResponseDocumentLinksInterface =
+  NestApiCommonDocumentLinksInterface;
+
+export type NestApiEntityResponseDocumentInterface =
+  NestApiCommonDocumentInterface & {
+    readonly data: NestApiResourceInterface;
+    readonly links: NestApiEntityResponseDocumentLinksInterface;
+  };
+
+export type NestApiEntitiesResponseDocumentLinksInterface =
   NestApiCommonDocumentLinksInterface & NestApiPaginationLinksInterface;
 
-export type NestApiEntitiesDocumentInterface =
+export type NestApiEntitiesResponseDocumentInterface =
   NestApiCommonDocumentInterface & {
     readonly data: NestApiResourceInterface[];
-    readonly links: NestApiEntitiesDocumentLinksInterface;
+    readonly links: NestApiEntitiesResponseDocumentLinksInterface;
   };
 
 export type NestApiRelationshipRequestDocumentInterface = {
@@ -159,6 +164,6 @@ export type NestApiRequestDocumentInterface =
 
 export type NestApiResponseDocumentInterface =
   | NestApiEmptyDocumentInterface
-  | NestApiEntityDocumentInterface
-  | NestApiEntitiesDocumentInterface
+  | NestApiEntityResponseDocumentInterface
+  | NestApiEntitiesResponseDocumentInterface
   | NestApiErrorDocumentInterface;

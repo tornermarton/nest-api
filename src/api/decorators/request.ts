@@ -17,6 +17,7 @@ import { Request } from 'express';
 
 import { QueryDtoPage } from '../../dto';
 import {
+  NestApiEntityRequestBodyTransformationPipe,
   NestApiRelationshipRequestBodyTransformationPipe,
   NestApiRelationshipsRequestBodyTransformationPipe,
   NestApiRequestBodyDataTransformationPipe,
@@ -26,6 +27,7 @@ import {
 } from '../../request';
 import { SWAGGER_API_PARAMETERS_METADATA_KEY } from '../constants';
 import {
+  NestApiEntityRequestDocument,
   NestApiRelationshipRequestDocument,
   NestApiRelationshipsRequestDocument,
 } from '../models';
@@ -128,6 +130,24 @@ export const NestApiRequestQuery = <TModel extends Type>(
   };
 };
 
+export const NestApiEntityRequestBody = <TModel extends Type>(
+  model: TModel,
+): ParameterDecorator => {
+  return (
+    target: object,
+    propertyKey: string | symbol,
+    parameterIndex: number,
+  ) => {
+    const document: Type = NestApiEntityRequestDocument(model);
+
+    Body(
+      new NestApiRequestBodyValidationPipe(document),
+      new NestApiRequestBodyDataTransformationPipe(),
+      new NestApiEntityRequestBodyTransformationPipe(),
+    )(target, propertyKey, parameterIndex);
+  };
+};
+
 export const NestApiRelationshipRequestBody = <TModel extends Type>(
   model: TModel,
 ): ParameterDecorator => {
@@ -162,6 +182,21 @@ export const NestApiRelationshipsRequestBody = <TModel extends Type>(
       new NestApiRelationshipsRequestBodyTransformationPipe(),
     )(target, propertyKey, parameterIndex);
   };
+};
+
+export const NestApiEntityRequest = <TModel extends Type>(
+  model: TModel,
+  options?: ApiBodyOptions,
+): MethodDecorator => {
+  const document: Type = NestApiEntityRequestDocument(model);
+
+  return applyDecorators(
+    ApiExtraModels(document),
+    ApiBody({
+      type: document,
+      ...options,
+    }),
+  );
 };
 
 export const NestApiRelationshipRequest = <TModel extends Type>(

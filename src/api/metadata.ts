@@ -1,3 +1,6 @@
+import { Type } from '@nestjs/common';
+import { ApiPropertyOptions } from '@nestjs/swagger';
+
 import {
   NEST_API_ENTITY_METADATA_KEY,
   NEST_API_ENTITY_PROPERTIES_METADATA_KEY,
@@ -5,11 +8,16 @@ import {
 import { isNullOrUndefined } from '../core';
 
 export type NestApiEntityPropertiesMetadata = {
-  id: { name: string };
-  attributes: { name: string }[];
+  id?: { name: string; openapi?: ApiPropertyOptions };
+  attributes: { name: string; openapi?: ApiPropertyOptions }[];
   // eslint-disable-next-line @typescript-eslint/ban-types
-  relationships: { name: string; type: () => Function; isArray: boolean }[];
-  meta: { name: string }[];
+  relationships: {
+    name: string;
+    type: () => Type;
+    kind: 'toOne' | 'toMany';
+    openapi?: ApiPropertyOptions;
+  }[];
+  meta: { name: string; openapi?: ApiPropertyOptions }[];
 };
 
 export type NestApiEntityMetadata = {
@@ -26,7 +34,9 @@ export function getEntityMetadata(target: Function): NestApiEntityMetadata {
 
   if (isNullOrUndefined(reflected)) {
     // TODO: lib error
-    throw new Error('Target must be a decorated NestApiEntity');
+    throw new Error(
+      `Target [${target.name}] must be decorated  with @NestApiEntity()`,
+    );
   }
 
   return reflected;

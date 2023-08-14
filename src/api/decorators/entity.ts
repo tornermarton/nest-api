@@ -9,10 +9,6 @@ import {
   setEntityMetadata,
   setEntityPropertiesMetadata,
 } from '../metadata';
-import {
-  NestApiResourceRelationshipToMany,
-  NestApiResourceRelationshipToOne,
-} from '../models';
 
 export function NestApiEntity(name: string): ClassDecorator {
   // eslint-disable-next-line @typescript-eslint/ban-types
@@ -49,6 +45,7 @@ export function NestApiIdProperty(
   // eslint-disable-next-line @typescript-eslint/ban-types
   return (target: Object, propertyKey: string | symbol): void => {
     Expose()(target, propertyKey);
+    // TODO: move to Resource in models.ts
     ApiProperty({ ...options, name: 'id' })(target, propertyKey);
 
     setEntityPropertiesMetadata(target, {
@@ -64,6 +61,7 @@ export function NestApiAttributeProperty(
   // eslint-disable-next-line @typescript-eslint/ban-types
   return (target: Object, propertyKey: string | symbol): void => {
     Expose()(target, propertyKey);
+    // TODO: move to Resource in models.ts
     ApiProperty(options)(target, propertyKey);
 
     const propertiesMetadata: Partial<NestApiEntityPropertiesMetadata> =
@@ -85,14 +83,6 @@ export function NestApiRelationshipProperty(
   // eslint-disable-next-line @typescript-eslint/ban-types
   return (target: Object, propertyKey: string | symbol): void => {
     Expose()(target, propertyKey);
-    ApiProperty({
-      ...options,
-      type: () =>
-        options.isArray
-          ? NestApiResourceRelationshipToMany(options.type())
-          : NestApiResourceRelationshipToOne(options.type()),
-      isArray: false,
-    })(target, propertyKey);
 
     const propertiesMetadata: Partial<NestApiEntityPropertiesMetadata> =
       getEntityPropertiesMetadata(target);
@@ -103,7 +93,7 @@ export function NestApiRelationshipProperty(
         {
           name: propertyKey.toString(),
           type: options.type,
-          isArray: options.isArray ?? false,
+          kind: options.isArray ? 'toMany' : 'toOne',
         },
       ],
     });
@@ -116,6 +106,7 @@ export function NestApiMetaProperty(
   // eslint-disable-next-line @typescript-eslint/ban-types
   return (target: Object, propertyKey: string | symbol): void => {
     Expose()(target, propertyKey);
+    // TODO: move to Resource in models.ts
     ApiProperty(options)(target, propertyKey);
 
     const propertiesMetadata: Partial<NestApiEntityPropertiesMetadata> =
