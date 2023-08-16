@@ -159,6 +159,7 @@ export type NestApiErrorDocumentInterface = NestApiCommonDocumentInterface & {
 };
 
 export type NestApiRequestDocumentInterface =
+  | NestApiEntityRequestDocumentInterface
   | NestApiRelationshipRequestDocumentInterface
   | NestApiRelationshipsRequestDocumentInterface;
 

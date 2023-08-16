@@ -143,7 +143,7 @@ export const NestApiEntityRequestBody = <TModel extends Type>(
     Body(
       new NestApiRequestBodyValidationPipe(document),
       new NestApiRequestBodyDataTransformationPipe(),
-      new NestApiEntityRequestBodyTransformationPipe(),
+      new NestApiEntityRequestBodyTransformationPipe(model),
     )(target, propertyKey, parameterIndex);
   };
 };

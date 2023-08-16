@@ -12,6 +12,7 @@ import {
   IsArray,
   IsDefined,
   IsNotEmpty,
+  IsOptional,
   IsUUID,
   ValidateNested,
 } from 'class-validator';
@@ -203,8 +204,15 @@ export function NestApiResource(
     class ResourceAttributes extends PickType(type, attributes) {}
     renameType(ResourceAttributes, `${resourceName}Attributes`);
 
+    const required: boolean = properties.attributes
+      .map((a) => a.openapi)
+      .some((o) => !!o?.required);
+
     class ResourceWithAttributes {
-      @ApiProperty({ type: ResourceAttributes })
+      @ApiProperty({ type: ResourceAttributes, required: required })
+      @IsDefined()
+      @ValidateNested()
+      @TransformType(() => ResourceAttributes)
       public readonly attributes: ResourceAttributes;
     }
     resourceTypes.push(ResourceWithAttributes);
@@ -218,23 +226,37 @@ export function NestApiResource(
     renameType(ResourceRelationships, `${resourceName}Relationships`);
 
     for (const { name, type, kind, openapi } of properties.relationships) {
+      const entityType: Type = type();
       const model: Type =
         kind === 'toMany'
-          ? NestApiResourceRelationshipToMany(type(), options)
-          : NestApiResourceRelationshipToOne(type(), options);
+          ? NestApiResourceRelationshipToMany(entityType, options)
+          : NestApiResourceRelationshipToOne(entityType, options);
       const kindSection: string =
         kind.slice(0, 1).toUpperCase() + kind.slice(1);
-      renameType(model, `${resourceName}Relationship${kindSection}${name}`);
+      renameType(
+        model,
+        `${resourceName}Relationship${kindSection}${entityType.name}`,
+      );
 
       ApiProperty({
         ...openapi,
         type: model,
         isArray: false,
       })(ResourceRelationships.prototype, name);
+      IsDefined()(ResourceRelationships.prototype, name);
+      ValidateNested()(ResourceRelationships.prototype, name);
+      TransformType(() => model)(ResourceRelationships.prototype, name);
     }
 
+    const required: boolean = properties.relationships
+      .map((r) => r.openapi)
+      .some((o) => !!o?.required);
+
     class ResourceWithRelationships {
-      @ApiProperty({ type: ResourceRelationships })
+      @ApiProperty({ type: ResourceRelationships, required: required })
+      @IsDefined()
+      @ValidateNested()
+      @TransformType(() => ResourceRelationships)
       public readonly relationships: ResourceRelationships;
     }
     resourceTypes.push(ResourceWithRelationships);
@@ -247,8 +269,15 @@ export function NestApiResource(
     class ResourceMeta extends PickType(type, meta) {}
     renameType(ResourceMeta, `${resourceName}Meta`);
 
+    const required: boolean = properties.meta
+      .map((m) => m.openapi)
+      .some((o) => !!o?.required);
+
     class ResourceWithMeta {
-      @ApiProperty({ type: ResourceMeta })
+      @ApiProperty({ type: ResourceMeta, required: required })
+      @IsDefined()
+      @ValidateNested()
+      @TransformType(() => ResourceMeta)
       public readonly meta: ResourceMeta;
     }
     resourceTypes.push(ResourceWithMeta);
@@ -304,6 +333,7 @@ export function NestApiEntityRequestDocument(type: Type): Type {
 
   class Document {
     @ApiProperty({ type: Resource })
+    @IsDefined()
     @ValidateNested()
     @TransformType(() => Resource)
     public readonly data: Resource;
@@ -367,6 +397,7 @@ export function NestApiRelationshipRequestDocument(type: Type): Type {
 
   class Document {
     @ApiProperty({ type: ResourceIdentifier, nullable: true })
+    @IsOptional()
     @ValidateNested()
     @TransformType(() => ResourceIdentifier)
     public readonly data: ResourceIdentifier | null;

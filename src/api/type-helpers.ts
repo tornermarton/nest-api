@@ -1,5 +1,5 @@
 import { Type } from '@nestjs/common';
-import { OmitType, PartialType } from '@nestjs/swagger';
+import { ApiPropertyOptions, OmitType, PartialType } from '@nestjs/swagger';
 
 import {
   getEntityMetadata,
@@ -20,6 +20,7 @@ function copyMetadata<O extends Entity, N, K extends keyof O>(
   oldType: Type<O>,
   newType: Type<N>,
   omit: readonly K[] = [],
+  openapi: ApiPropertyOptions = {},
 ): void {
   const metadata: NestApiEntityMetadata = getEntityMetadata(oldType.prototype);
   const newMetadata: NestApiEntityMetadata = {
@@ -28,12 +29,12 @@ function copyMetadata<O extends Entity, N, K extends keyof O>(
       id: omit.includes('id' as unknown as K)
         ? metadata.properties.id
         : undefined,
-      attributes: metadata.properties.attributes.filter(
-        (a) => !omit.includes(a.name as unknown as K),
-      ),
-      relationships: metadata.properties.relationships.filter(
-        (r) => !omit.includes(r.name as unknown as K),
-      ),
+      attributes: metadata.properties.attributes
+        .filter((a) => !omit.includes(a.name as unknown as K))
+        .map((a) => ({ ...a, openapi: { ...a.openapi, ...openapi } })),
+      relationships: metadata.properties.relationships
+        .filter((r) => !omit.includes(r.name as unknown as K))
+        .map((r) => ({ ...r, openapi: { ...r.openapi, ...openapi } })),
       meta: [],
     },
   };
@@ -85,7 +86,7 @@ export function PatchEntityDto<
     ]),
   );
 
-  copyMetadata(type, newType, omittedKeys);
+  copyMetadata(type, newType, omittedKeys, { required: false });
 
   return newType;
 }

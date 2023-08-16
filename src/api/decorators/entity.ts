@@ -40,17 +40,23 @@ export function NestApiEntity(name: string): ClassDecorator {
 }
 
 export function NestApiIdProperty(
-  options?: Omit<ApiPropertyOptions, 'name'>,
+  options?: Omit<ApiPropertyOptions, 'name' | 'required'>,
 ): PropertyDecorator {
   // eslint-disable-next-line @typescript-eslint/ban-types
   return (target: Object, propertyKey: string | symbol): void => {
     Expose()(target, propertyKey);
     // TODO: move to Resource in models.ts
-    ApiProperty({ ...options, name: 'id' })(target, propertyKey);
+    ApiProperty({ ...options, name: 'id', required: true })(
+      target,
+      propertyKey,
+    );
+
+    const openapi: ApiPropertyOptions = options ?? {};
+    openapi.required = openapi.required ?? true;
 
     setEntityPropertiesMetadata(target, {
       ...getEntityPropertiesMetadata(target),
-      id: { name: propertyKey.toString() },
+      id: { name: propertyKey.toString(), openapi: openapi },
     });
   };
 }
@@ -64,13 +70,16 @@ export function NestApiAttributeProperty(
     // TODO: move to Resource in models.ts
     ApiProperty(options)(target, propertyKey);
 
+    const openapi: ApiPropertyOptions = options ?? {};
+    openapi.required = openapi.required ?? true;
+
     const propertiesMetadata: Partial<NestApiEntityPropertiesMetadata> =
       getEntityPropertiesMetadata(target);
     setEntityPropertiesMetadata(target, {
       ...propertiesMetadata,
       attributes: [
         ...(propertiesMetadata.attributes ?? []),
-        { name: propertyKey.toString() },
+        { name: propertyKey.toString(), openapi: openapi },
       ],
     });
   };
@@ -84,6 +93,9 @@ export function NestApiRelationshipProperty(
   return (target: Object, propertyKey: string | symbol): void => {
     Expose()(target, propertyKey);
 
+    const openapi: ApiPropertyOptions = options ?? {};
+    openapi.required = openapi.required ?? true;
+
     const propertiesMetadata: Partial<NestApiEntityPropertiesMetadata> =
       getEntityPropertiesMetadata(target);
     setEntityPropertiesMetadata(target, {
@@ -94,6 +106,7 @@ export function NestApiRelationshipProperty(
           name: propertyKey.toString(),
           type: options.type,
           kind: options.isArray ? 'toMany' : 'toOne',
+          openapi: openapi,
         },
       ],
     });
@@ -109,13 +122,16 @@ export function NestApiMetaProperty(
     // TODO: move to Resource in models.ts
     ApiProperty(options)(target, propertyKey);
 
+    const openapi: ApiPropertyOptions = options ?? {};
+    openapi.required = openapi.required ?? true;
+
     const propertiesMetadata: Partial<NestApiEntityPropertiesMetadata> =
       getEntityPropertiesMetadata(target);
     setEntityPropertiesMetadata(target, {
       ...propertiesMetadata,
       meta: [
         ...(propertiesMetadata.meta ?? []),
-        { name: propertyKey.toString() },
+        { name: propertyKey.toString(), openapi: openapi },
       ],
     });
   };

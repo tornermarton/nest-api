@@ -4,6 +4,7 @@ import {
   Type,
   ValidationPipe,
 } from '@nestjs/common';
+import { plainToInstance } from 'class-transformer';
 
 import {
   BODY_VALIDATION_EXCEPTION_FACTORY,
@@ -11,9 +12,9 @@ import {
   UUID_VALIDATION_EXCEPTION_FACTORY,
 } from './exception-factories';
 import {
-  NestApiEntityRequestDocumentInterface,
   NestApiRequestDocumentInterface,
   NestApiResourceIdentifierInterface,
+  NestApiResourceInterface,
 } from '../api';
 
 export class NestApiRequestIdPipe extends ParseUUIDPipe {
@@ -59,11 +60,26 @@ export class NestApiRequestBodyDataTransformationPipe
   }
 }
 
-export class NestApiEntityRequestBodyTransformationPipe
-  implements PipeTransform<NestApiEntityRequestDocumentInterface>
+// TODO: use interface without links
+export class NestApiEntityRequestBodyTransformationPipe<T>
+  implements PipeTransform<NestApiResourceInterface>
 {
-  public transform(value: NestApiEntityRequestDocumentInterface): unknown {
-    return value;
+  constructor(private readonly type: Type<T>) {}
+
+  public transform(value: NestApiResourceInterface): T {
+    const attributes: Record<string, unknown> = value.attributes ?? {};
+    const relationships: Record<string, unknown> = value.relationships ?? {};
+    const meta: Record<string, unknown> = value.meta ?? {};
+
+    const plain: Record<string, unknown> = {
+      ...attributes,
+      ...relationships,
+      ...meta,
+    };
+
+    return plainToInstance(this.type, plain, {
+      excludeExtraneousValues: true,
+    });
   }
 }
 

@@ -8,16 +8,16 @@ import {
 import { isNullOrUndefined } from '../core';
 
 export type NestApiEntityPropertiesMetadata = {
-  id?: { name: string; openapi?: ApiPropertyOptions };
-  attributes: { name: string; openapi?: ApiPropertyOptions }[];
+  id?: { name: string; openapi: ApiPropertyOptions };
+  attributes: { name: string; openapi: ApiPropertyOptions }[];
   // eslint-disable-next-line @typescript-eslint/ban-types
   relationships: {
     name: string;
     type: () => Type;
     kind: 'toOne' | 'toMany';
-    openapi?: ApiPropertyOptions;
+    openapi: ApiPropertyOptions;
   }[];
-  meta: { name: string; openapi?: ApiPropertyOptions }[];
+  meta: { name: string; openapi: ApiPropertyOptions }[];
 };
 
 export type NestApiEntityMetadata = {
