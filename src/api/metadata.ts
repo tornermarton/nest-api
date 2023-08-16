@@ -3,11 +3,11 @@ import { ApiPropertyOptions } from '@nestjs/swagger';
 
 import {
   NEST_API_ENTITY_METADATA_KEY,
-  NEST_API_ENTITY_PROPERTIES_METADATA_KEY,
+  NEST_API_ENTITY_FIELDS_METADATA_KEY,
 } from './constants';
 import { isNullOrUndefined } from '../core';
 
-export type NestApiEntityPropertiesMetadata = {
+export type NestApiEntityFieldsMetadata = {
   id?: { name: string; openapi: ApiPropertyOptions };
   attributes: { name: string; openapi: ApiPropertyOptions }[];
   // eslint-disable-next-line @typescript-eslint/ban-types
@@ -22,7 +22,7 @@ export type NestApiEntityPropertiesMetadata = {
 
 export type NestApiEntityMetadata = {
   type: string;
-  properties: NestApiEntityPropertiesMetadata;
+  fields: NestApiEntityFieldsMetadata;
 };
 
 // eslint-disable-next-line @typescript-eslint/ban-types
@@ -49,12 +49,12 @@ export function setEntityMetadata(
   Reflect.defineMetadata(NEST_API_ENTITY_METADATA_KEY, metadata, target);
 }
 
-export function getEntityPropertiesMetadata(
+export function getEntityFieldsMetadata(
   // eslint-disable-next-line @typescript-eslint/ban-types
   target: Object,
-): Partial<NestApiEntityPropertiesMetadata> {
-  const reflected: Partial<NestApiEntityPropertiesMetadata> | undefined =
-    Reflect.getMetadata(NEST_API_ENTITY_PROPERTIES_METADATA_KEY, target);
+): Partial<NestApiEntityFieldsMetadata> {
+  const reflected: Partial<NestApiEntityFieldsMetadata> | undefined =
+    Reflect.getMetadata(NEST_API_ENTITY_FIELDS_METADATA_KEY, target);
 
   if (isNullOrUndefined(reflected)) {
     return {};
@@ -63,14 +63,10 @@ export function getEntityPropertiesMetadata(
   return reflected;
 }
 
-export function setEntityPropertiesMetadata(
+export function setEntityFieldsMetadata(
   // eslint-disable-next-line @typescript-eslint/ban-types
   target: Object,
-  metadata: Partial<NestApiEntityPropertiesMetadata>,
+  metadata: Partial<NestApiEntityFieldsMetadata>,
 ): void {
-  Reflect.defineMetadata(
-    NEST_API_ENTITY_PROPERTIES_METADATA_KEY,
-    metadata,
-    target,
-  );
+  Reflect.defineMetadata(NEST_API_ENTITY_FIELDS_METADATA_KEY, metadata, target);
 }

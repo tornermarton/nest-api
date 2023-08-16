@@ -25,14 +25,12 @@ function copyMetadata<O extends Entity, N, K extends keyof O>(
   const metadata: NestApiEntityMetadata = getEntityMetadata(oldType.prototype);
   const newMetadata: NestApiEntityMetadata = {
     type: metadata.type,
-    properties: {
-      id: omit.includes('id' as unknown as K)
-        ? metadata.properties.id
-        : undefined,
-      attributes: metadata.properties.attributes
+    fields: {
+      id: omit.includes('id' as unknown as K) ? metadata.fields.id : undefined,
+      attributes: metadata.fields.attributes
         .filter((a) => !omit.includes(a.name as unknown as K))
         .map((a) => ({ ...a, openapi: { ...a.openapi, ...openapi } })),
-      relationships: metadata.properties.relationships
+      relationships: metadata.fields.relationships
         .filter((r) => !omit.includes(r.name as unknown as K))
         .map((r) => ({ ...r, openapi: { ...r.openapi, ...openapi } })),
       meta: [],

@@ -177,7 +177,7 @@ export class ApiResponseInterceptor
   ): NestApiResourceInterface {
     const metadata: NestApiEntityMetadata = getEntityMetadata(entity);
 
-    if (isNullOrUndefined(metadata.properties.id)) {
+    if (isNullOrUndefined(metadata.fields.id)) {
       // TODO: lib error
       throw new Error(
         `Response entity [${entity.name}] must have an ID property decorated with @NestApiEntityId()`,
@@ -185,7 +185,7 @@ export class ApiResponseInterceptor
     }
 
     // TODO: might be a good idea to check type in the decorator
-    const id: string = entity[metadata.properties.id.name];
+    const id: string = entity[metadata.fields.id.name];
     const type: string = metadata.type;
 
     const builder: NestApiEntityResourceBuilder =
@@ -195,15 +195,15 @@ export class ApiResponseInterceptor
       excludeExtraneousValues: true,
     });
 
-    for (const { name } of metadata.properties.meta) {
+    for (const { name } of metadata.fields.meta) {
       builder.meta(name, obj[name]);
     }
 
-    for (const { name } of metadata.properties.attributes) {
+    for (const { name } of metadata.fields.attributes) {
       builder.attribute(name, obj[name]);
     }
 
-    for (const { name, type, kind } of metadata.properties.relationships) {
+    for (const { name, type, kind } of metadata.fields.relationships) {
       const relationshipMetadata: NestApiEntityMetadata = getEntityMetadata(
         type().prototype,
       );

@@ -20,7 +20,7 @@ import {
 import {
   getEntityMetadata,
   NestApiEntityMetadata,
-  NestApiEntityPropertiesMetadata,
+  NestApiEntityFieldsMetadata,
 } from './metadata';
 import { isNotNullOrUndefined } from '../core';
 
@@ -187,11 +187,11 @@ export function NestApiResource(
 ): Type {
   const resourceName: string = type.name;
   const metadata: NestApiEntityMetadata = getEntityMetadata(type.prototype);
-  const properties: NestApiEntityPropertiesMetadata = metadata.properties;
+  const fields: NestApiEntityFieldsMetadata = metadata.fields;
   const resourceTypes: Type[] = [];
 
   // identifier
-  if (isNotNullOrUndefined(metadata.properties.id)) {
+  if (isNotNullOrUndefined(metadata.fields.id)) {
     resourceTypes.push(NestApiResourceIdentifier(type));
   } else {
     resourceTypes.push(NestApiResourceType(type));
@@ -199,12 +199,12 @@ export function NestApiResource(
   // identifier
 
   // attributes
-  const attributes: string[] = properties.attributes.map((e) => e.name);
+  const attributes: string[] = fields.attributes.map((e) => e.name);
   if (attributes.length > 0) {
     class ResourceAttributes extends PickType(type, attributes) {}
     renameType(ResourceAttributes, `${resourceName}Attributes`);
 
-    const required: boolean = properties.attributes
+    const required: boolean = fields.attributes
       .map((a) => a.openapi)
       .some((o) => !!o?.required);
 
@@ -220,12 +220,12 @@ export function NestApiResource(
   // attributes
 
   // relationships
-  const relationships: string[] = properties.relationships.map((e) => e.name);
-  if (properties.relationships.length > 0) {
+  const relationships: string[] = fields.relationships.map((e) => e.name);
+  if (fields.relationships.length > 0) {
     class ResourceRelationships extends PickType(type, relationships) {}
     renameType(ResourceRelationships, `${resourceName}Relationships`);
 
-    for (const { name, type, kind, openapi } of properties.relationships) {
+    for (const { name, type, kind, openapi } of fields.relationships) {
       const entityType: Type = type();
       const model: Type =
         kind === 'toMany'
@@ -248,7 +248,7 @@ export function NestApiResource(
       TransformType(() => model)(ResourceRelationships.prototype, name);
     }
 
-    const required: boolean = properties.relationships
+    const required: boolean = fields.relationships
       .map((r) => r.openapi)
       .some((o) => !!o?.required);
 
@@ -264,12 +264,12 @@ export function NestApiResource(
   // relationships
 
   // meta
-  const meta: string[] = properties.meta.map((e) => e.name);
+  const meta: string[] = fields.meta.map((e) => e.name);
   if (meta.length > 0) {
     class ResourceMeta extends PickType(type, meta) {}
     renameType(ResourceMeta, `${resourceName}Meta`);
 
-    const required: boolean = properties.meta
+    const required: boolean = fields.meta
       .map((m) => m.openapi)
       .some((o) => !!o?.required);
 

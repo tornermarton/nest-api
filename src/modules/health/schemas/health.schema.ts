@@ -5,26 +5,26 @@ import {
 } from '@nestjs/terminus';
 
 import {
-  NestApiAttributeProperty,
+  NestApiAttributeField,
   NestApiEntity,
-  NestApiIdProperty,
+  NestApiIdField,
 } from '../../../api';
 import { uuid } from '../../../core';
 
 @NestApiEntity('health')
 export class Health implements HealthCheckResult {
-  @NestApiIdProperty()
+  @NestApiIdField()
   public readonly id: string = uuid();
 
-  @NestApiAttributeProperty()
+  @NestApiAttributeField()
   public readonly status: HealthCheckStatus;
 
-  @NestApiAttributeProperty()
+  @NestApiAttributeField()
   public readonly info: HealthIndicatorResult;
 
-  @NestApiAttributeProperty()
+  @NestApiAttributeField()
   public readonly error: HealthIndicatorResult;
 
-  @NestApiAttributeProperty()
+  @NestApiAttributeField()
   public readonly details: HealthIndicatorResult;
 }
