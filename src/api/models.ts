@@ -14,6 +14,7 @@ import {
   IsNotEmpty,
   IsOptional,
   IsUUID,
+  NotEquals,
   ValidateNested,
 } from 'class-validator';
 
@@ -113,6 +114,10 @@ export function NestApiResourceRelationshipToOne(
 
   class RelationshipToOneData {
     @ApiProperty({ type: ResourceIdentifier, nullable: true })
+    @NotEquals(undefined)
+    @IsOptional()
+    @ValidateNested()
+    @TransformType(() => ResourceIdentifier)
     public readonly data: ResourceIdentifier | null;
   }
   resourceTypes.push(RelationshipToOneData);
@@ -153,6 +158,10 @@ export function NestApiResourceRelationshipToMany(
 
   class RelationshipToManyData {
     @ApiProperty({ type: ResourceIdentifier, isArray: true })
+    @IsDefined()
+    @IsArray()
+    @ValidateNested({ each: true })
+    @TransformType(() => ResourceIdentifier)
     public readonly data: ResourceIdentifier[];
   }
   resourceTypes.push(RelationshipToManyData);
@@ -220,9 +229,8 @@ export function NestApiResource(
   // attributes
 
   // relationships
-  const relationships: string[] = fields.relationships.map((e) => e.name);
   if (fields.relationships.length > 0) {
-    class ResourceRelationships extends PickType(type, relationships) {}
+    class ResourceRelationships {}
     renameType(ResourceRelationships, `${resourceName}Relationships`);
 
     for (const { name, type, kind, openapi } of fields.relationships) {
@@ -243,6 +251,9 @@ export function NestApiResource(
         type: model,
         isArray: false,
       })(ResourceRelationships.prototype, name);
+      if (!openapi.required) {
+        IsOptional()(ResourceRelationships.prototype, name);
+      }
       IsDefined()(ResourceRelationships.prototype, name);
       ValidateNested()(ResourceRelationships.prototype, name);
       TransformType(() => model)(ResourceRelationships.prototype, name);

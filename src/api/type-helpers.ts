@@ -32,7 +32,15 @@ function copyMetadata<O extends Entity, N, K extends keyof O>(
         .map((a) => ({ ...a, openapi: { ...a.openapi, ...openapi } })),
       relationships: metadata.fields.relationships
         .filter((r) => !omit.includes(r.name as unknown as K))
-        .map((r) => ({ ...r, openapi: { ...r.openapi, ...openapi } })),
+        .map((r) => ({
+          ...r,
+          openapi: {
+            ...r.openapi,
+            ...openapi,
+            // If it is a toMany relationship it is considered optional for request DTOs
+            required: r.kind === 'toMany' ? false : openapi.required,
+          },
+        })),
       meta: [],
     },
   };
