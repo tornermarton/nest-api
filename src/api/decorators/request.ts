@@ -49,15 +49,12 @@ const SilentQuery = createParamDecorator(
 function createQueryParameterObjects(filterType: Type): ParameterObject[] {
   return [
     {
-      name: 'page',
+      name: 'filter',
       in: 'query',
       required: false,
       style: 'deepObject',
       schema: {
-        properties: {
-          limit: { type: 'number', default: QueryDtoPage.DEFAULT_LIMIT },
-          offset: { type: 'number', default: QueryDtoPage.DEFAULT_OFFSET },
-        },
+        $ref: getSchemaPath(filterType),
       },
     },
     {
@@ -74,24 +71,14 @@ function createQueryParameterObjects(filterType: Type): ParameterObject[] {
       },
     },
     {
-      name: 'filter',
+      name: 'page',
       in: 'query',
       required: false,
       style: 'deepObject',
       schema: {
-        $ref: getSchemaPath(filterType),
-      },
-    },
-    {
-      name: 'expand',
-      in: 'query',
-      required: false,
-      style: 'form',
-      explode: false,
-      schema: {
-        type: 'array',
-        items: {
-          type: 'string',
+        properties: {
+          offset: { type: 'number', default: QueryDtoPage.DEFAULT_OFFSET },
+          limit: { type: 'number', default: QueryDtoPage.DEFAULT_LIMIT },
         },
       },
     },

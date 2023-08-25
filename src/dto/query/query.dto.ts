@@ -11,31 +11,27 @@ import {
 } from 'class-validator';
 
 export class QueryDtoPage {
-  public static DEFAULT_LIMIT: number = 100;
   public static DEFAULT_OFFSET: number = 0;
-
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  @TransformType(() => Number)
-  public readonly limit: number = QueryDtoPage.DEFAULT_LIMIT;
+  public static DEFAULT_LIMIT: number = 100;
 
   @IsOptional()
   @IsInt()
   @Min(0)
   @TransformType(() => Number)
   public readonly offset: number = QueryDtoPage.DEFAULT_OFFSET;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @TransformType(() => Number)
+  public readonly limit: number = QueryDtoPage.DEFAULT_LIMIT;
 }
 
-export interface IQueryDto<
-  TModel,
-  TFilter,
-  TExpand extends Extract<keyof TModel, string>,
-> {
-  readonly page: QueryDtoPage;
+// TODO: type filter better
+export interface IQueryDto<TModel, TFilter> {
   readonly filter: TFilter;
-  readonly expand: TExpand[];
   readonly sort: string[];
+  readonly page: QueryDtoPage;
 }
 
 export type SortDefinition<
@@ -71,20 +67,13 @@ function parseSortDefinitions<
 export function QueryDto<
   TModel,
   TFilter,
-  TExpand extends Extract<keyof TModel, string>,
   TSort extends Extract<keyof TModel, string>,
 >(
   type: Type<TModel>,
   filter: Type<TFilter>,
-  expand: readonly TExpand[],
   sort: readonly SortDefinition<TModel, TSort>[],
-): Type<IQueryDto<TModel, TFilter, TExpand>> {
-  class QueryDtoClass implements IQueryDto<TModel, TFilter, TExpand> {
-    @IsOptional()
-    @ValidateNested()
-    @TransformType(() => QueryDtoPage)
-    public readonly page: QueryDtoPage = new QueryDtoPage();
-
+): Type<IQueryDto<TModel, TFilter>> {
+  class QueryDtoClass implements IQueryDto<TModel, TFilter> {
     @IsOptional()
     @IsObject()
     @ValidateNested()
@@ -93,16 +82,15 @@ export function QueryDto<
 
     @IsOptional()
     @IsString({ each: true })
-    @IsIn(expand, { each: true })
-    @Transform(({ value }) => (typeof value === 'string' ? [value] : value))
-    public readonly expand: TExpand[] = [];
-
-    @IsOptional()
-    @IsString({ each: true })
     @IsIn(parseSortDefinitions(sort), { each: true })
     @Transform(({ value }) => (typeof value === 'string' ? [value] : value))
     // TODO: type sort somehow
     public readonly sort: string[] = [];
+
+    @IsOptional()
+    @ValidateNested()
+    @TransformType(() => QueryDtoPage)
+    public readonly page: QueryDtoPage = new QueryDtoPage();
   }
 
   return QueryDtoClass;

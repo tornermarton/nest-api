@@ -28,10 +28,6 @@ function sortDtoToQuery(sort: string[]): Record<string, 1 | -1> {
   }, {});
 }
 
-function expandDtoToQuery(expand: string[]): { path: string }[] {
-  return expand.map((e) => ({ path: e }));
-}
-
 export class MongooseEntityRepository<
   TEntity extends MongooseEntity,
 > extends EntityRepository<TEntity> {
@@ -48,27 +44,25 @@ export class MongooseEntityRepository<
     });
   }
 
-  public count<TFilter, TExpand extends Extract<keyof TEntity, string>>(
-    query: IQueryDto<TEntity, TFilter, TExpand>,
+  public count<TFilter>(
+    query: IQueryDto<TEntity, TFilter>,
   ): Observable<number> {
     const filter = filterDtoToQuery(query.filter);
 
     return from(this._model.find(filter).countDocuments().exec());
   }
 
-  public find<TFilter, TExpand extends Extract<keyof TEntity, string>>(
-    query: IQueryDto<TEntity, TFilter, TExpand>,
+  public find<TFilter>(
+    query: IQueryDto<TEntity, TFilter>,
   ): Observable<TEntity[]> {
     const filter = filterDtoToQuery(query.filter);
     const sort = sortDtoToQuery(query.sort);
-    const expand = expandDtoToQuery(query.expand);
 
     const req = this._model
       .find(filter)
-      .skip(query.page.offset * query.page.limit)
-      .limit(query.page.limit)
       .sort(sort)
-      .populate(expand);
+      .skip(query.page.offset)
+      .limit(query.page.limit);
 
     return from(req.exec()).pipe(
       concatAll(),

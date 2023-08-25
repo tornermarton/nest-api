@@ -98,8 +98,8 @@ export class EntityManager<
     );
   }
 
-  public find<TFilter, TExpand extends Extract<keyof TEntity, string>>(
-    query: IQueryDto<TEntity, TFilter, TExpand>,
+  public find<TFilter>(
+    query: IQueryDto<TEntity, TFilter>,
     options?: { count: boolean },
   ): Observable<EntitiesResponse<TEntity>> {
     const entities$: Observable<TEntity[]> = this._entity.repository

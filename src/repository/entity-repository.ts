@@ -14,12 +14,12 @@ export type EntityUpdateDto<T extends Entity> = Partial<
   Pick<T, 'updatedBy'>;
 
 export abstract class EntityRepository<TModel extends Entity> {
-  public abstract count<TFilter, TExpand extends Extract<keyof TModel, string>>(
-    query: IQueryDto<TModel, TFilter, TExpand>,
+  public abstract count<TFilter>(
+    query: IQueryDto<TModel, TFilter>,
   ): Observable<number>;
 
-  public abstract find<TFilter, TExpand extends Extract<keyof TModel, string>>(
-    query: IQueryDto<TModel, TFilter, TExpand>,
+  public abstract find<TFilter>(
+    query: IQueryDto<TModel, TFilter>,
   ): Observable<TModel[]>;
 
   public abstract create(dto: EntityCreateDto<TModel>): Observable<TModel>;

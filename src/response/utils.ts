@@ -24,8 +24,8 @@ export function getNestApiDocumentPaging(
   total?: number,
 ): NestApiDocumentPaging {
   const defaults = {
-    limit: QueryDtoPage.DEFAULT_LIMIT,
     offset: QueryDtoPage.DEFAULT_OFFSET,
+    limit: QueryDtoPage.DEFAULT_LIMIT,
   };
   const page = request.query.page ?? defaults;
 
@@ -66,10 +66,7 @@ type Mutable<Type> = {
   -readonly [Key in keyof Type]: Type[Key];
 };
 
-function updateQuery(
-  url: URL,
-  query: IQueryDto<unknown, unknown, never>,
-): string {
+function updateQuery(url: URL, query: IQueryDto<unknown, unknown>): string {
   // eslint-disable-next-line @typescript-eslint/no-unsafe-call
   url.search = stringify(query, {
     encodeValuesOnly: true,
@@ -85,7 +82,7 @@ function getNestApiPaginationLinks(
 ): NestApiPaginationLinksInterface {
   const url: URL = new URL(base);
   // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-  const query: Mutable<IQueryDto<unknown, unknown, never>> = parse(url.search, {
+  const query: Mutable<IQueryDto<unknown, unknown>> = parse(url.search, {
     ignoreQueryPrefix: true,
     comma: true,
   });
@@ -94,9 +91,9 @@ function getNestApiPaginationLinks(
     request,
     total,
   );
-  const { limit, offset } = paging;
+  const { offset, limit } = paging;
 
-  query.page = { limit: limit, offset: 0 };
+  query.page = { offset: 0, limit };
   const first: string = updateQuery(url, query);
 
   let prev: string | undefined = undefined;
@@ -104,12 +101,12 @@ function getNestApiPaginationLinks(
   let last: string | undefined = undefined;
 
   if (offset > 0) {
-    query.page = { limit: limit, offset: Math.max(0, offset - limit) };
+    query.page = { offset: Math.max(0, offset - limit), limit };
     prev = updateQuery(url, query);
   }
 
   if (total === Infinity || total - (total % limit) > offset) {
-    query.page = { limit: limit, offset: Math.min(offset + limit, total) };
+    query.page = { offset: Math.min(offset + limit, total), limit };
     next = updateQuery(url, query);
   }
 
@@ -118,7 +115,7 @@ function getNestApiPaginationLinks(
     if (total % limit === 0) {
       lastOffset = total - limit;
     }
-    query.page = { limit: limit, offset: lastOffset };
+    query.page = { offset: lastOffset, limit };
     last = updateQuery(url, query);
   }
 
