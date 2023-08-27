@@ -270,6 +270,9 @@ export function NestApiResource(
       @TransformType(() => ResourceRelationships)
       public readonly relationships: ResourceRelationships;
     }
+    if (!required) {
+      IsOptional()(ResourceWithRelationships.prototype, 'relationships');
+    }
     resourceTypes.push(ResourceWithRelationships);
   }
   // relationships
