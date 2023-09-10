@@ -450,7 +450,7 @@ export function NestApiRelationshipsRequestDocument(type: Type): Type {
   class ResourceIdentifier extends NestApiResourceIdentifier(type) {}
   renameType(ResourceIdentifier, `${name}ResourceIdentifier`);
 
-  class Document extends NestApiCommonDocument {
+  class Document {
     @ApiProperty({ type: ResourceIdentifier, isArray: true })
     @IsDefined()
     @IsArray()
