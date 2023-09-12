@@ -1,4 +1,5 @@
 import { Type } from '@nestjs/common';
+import { ApiProperty } from '@nestjs/swagger';
 import { Transform, Type as TransformType } from 'class-transformer';
 import {
   IsIn,
@@ -14,12 +15,22 @@ export class QueryDtoPage {
   public static DEFAULT_OFFSET: number = 0;
   public static DEFAULT_LIMIT: number = 100;
 
+  @ApiProperty({
+    required: false,
+    minimum: 0,
+    default: QueryDtoPage.DEFAULT_OFFSET,
+  })
   @IsOptional()
   @IsInt()
   @Min(0)
   @TransformType(() => Number)
   public readonly offset: number = QueryDtoPage.DEFAULT_OFFSET;
 
+  @ApiProperty({
+    required: false,
+    minimum: 0,
+    default: QueryDtoPage.DEFAULT_LIMIT,
+  })
   @IsOptional()
   @IsInt()
   @Min(0)

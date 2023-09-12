@@ -76,10 +76,7 @@ function createQueryParameterObjects(filterType: Type): ParameterObject[] {
       required: false,
       style: 'deepObject',
       schema: {
-        properties: {
-          offset: { type: 'number', default: QueryDtoPage.DEFAULT_OFFSET },
-          limit: { type: 'number', default: QueryDtoPage.DEFAULT_LIMIT },
-        },
+        $ref: getSchemaPath(QueryDtoPage),
       },
     },
   ];
@@ -96,6 +93,7 @@ export const NestApiRequestQuery = <TModel extends Type>(
     const descriptor = Object.getOwnPropertyDescriptor(target, propertyKey);
 
     ApiExtraModels(model)(target, propertyKey, descriptor);
+    ApiExtraModels(QueryDtoPage)(target, propertyKey, descriptor);
     SilentQuery(NestApiRequestQueryValidationPipe)(
       target,
       propertyKey,
