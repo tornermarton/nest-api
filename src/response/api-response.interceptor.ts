@@ -203,12 +203,12 @@ export class ApiResponseInterceptor
       builder.attribute(name, obj[name]);
     }
 
-    for (const { name, type, kind } of metadata.fields.relationships) {
+    for (const { name, descriptor } of metadata.fields.relationships) {
       const relationshipMetadata: NestApiEntityMetadata = getEntityMetadata(
-        type().prototype,
+        descriptor.related().prototype,
       );
 
-      if (kind === 'toMany') {
+      if (descriptor.kind === 'toMany') {
         builder.relationshipToMany(
           name,
           relationshipMetadata.type,

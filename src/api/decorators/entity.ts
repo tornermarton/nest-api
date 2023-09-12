@@ -1,8 +1,8 @@
-import { Type } from '@nestjs/common';
 import { ApiProperty, ApiPropertyOptions } from '@nestjs/swagger';
 import { Expose } from 'class-transformer';
 
-import { isNullOrUndefined } from '../../core';
+import { Entity, isNullOrUndefined } from '../../core';
+import { RelationshipDescriptor } from '../../repository';
 import {
   getEntityFieldsMetadata,
   NestApiEntityFieldsMetadata,
@@ -85,9 +85,9 @@ export function NestApiAttributeField(
   };
 }
 
-export function NestApiRelationshipField(
-  // eslint-disable-next-line @typescript-eslint/ban-types
-  options: ApiPropertyOptions & { type: () => Type },
+export function NestApiRelationshipField<TRelated extends Entity>(
+  descriptor: RelationshipDescriptor<TRelated>,
+  options?: ApiPropertyOptions,
 ): PropertyDecorator {
   // eslint-disable-next-line @typescript-eslint/ban-types
   return (target: Object, propertyKey: string | symbol): void => {
@@ -104,8 +104,7 @@ export function NestApiRelationshipField(
         ...(fieldsMetadata.relationships ?? []),
         {
           name: propertyKey.toString(),
-          type: options.type,
-          kind: options.isArray ? 'toMany' : 'toOne',
+          descriptor: descriptor,
           openapi: openapi,
         },
       ],

@@ -13,6 +13,7 @@ import {
 } from 'rxjs';
 import { map } from 'rxjs/operators';
 
+import { EntityManagerService } from './entity-manager.service';
 import { Entity, isNotNullOrUndefined } from '../../core';
 import { IQueryDto } from '../../dto';
 import {
@@ -34,17 +35,9 @@ export type EntityManagerEntityDefinition<TEntity extends Entity> = {
   repository: EntityRepository<TEntity>;
 };
 
-export type EntityManagerRelationshipDefinition = {
-  descriptor: RelationshipDescriptor;
-  repository: RelationshipRepository<any>;
-};
-
-export type EntityManagerDefinition<
-  TEntity extends Entity,
-  TRelationships extends Extract<keyof TEntity, string>,
-> = {
-  entity: EntityManagerEntityDefinition<TEntity>;
-  relationships?: Record<TRelationships, EntityManagerRelationshipDefinition>;
+export type EntityManagerRelationshipDefinition<TRelated extends Entity> = {
+  descriptor: RelationshipDescriptor<TRelated>;
+  repository: RelationshipRepository<TRelated>;
 };
 
 // TODO: maybe move this logic to relationship repo?
@@ -54,28 +47,34 @@ type TypedRelationshipResponse<T> = [T] extends [Array<unknown>]
   ? RelationshipsResponse
   : RelationshipResponse;
 
+type TypedRelationshipRelatedResponse<T, V> = [T] extends [Array<unknown>]
+  ? EntitiesResponse<V>
+  : EntityResponse<V | null>;
+
 export class EntityManager<
   TEntity extends Entity,
   TRelationships extends Extract<keyof TEntity, string> = never,
 > {
+  private readonly _service: EntityManagerService;
+
   private readonly _entity: EntityManagerEntityDefinition<TEntity>;
   private readonly _relationships: Record<
     string,
-    EntityManagerRelationshipDefinition
+    EntityManagerRelationshipDefinition<any>
   >;
 
-  constructor({
-    entity,
-    relationships,
-  }: EntityManagerDefinition<TEntity, TRelationships>) {
+  constructor(
+    service: EntityManagerService,
+    entity: EntityManagerEntityDefinition<TEntity>,
+    relationships?: Record<
+      TRelationships,
+      EntityManagerRelationshipDefinition<any>
+    >,
+  ) {
+    this._service = service;
+
     this._entity = entity;
     this._relationships = relationships ?? {};
-  }
-
-  private transform(entity: Record<keyof TEntity, unknown>): TEntity {
-    return plainToInstance(this._entity.type, entity, {
-      excludeExtraneousValues: true,
-    });
   }
 
   private populateRelationships(
@@ -98,6 +97,16 @@ export class EntityManager<
     );
   }
 
+  public transform(entity: TEntity): Observable<TEntity> {
+    return this.populateRelationships(entity).pipe(
+      map((e) =>
+        plainToInstance(this._entity.type, e, {
+          excludeExtraneousValues: true,
+        }),
+      ),
+    );
+  }
+
   public find<TFilter>(
     query: IQueryDto<TEntity, TFilter>,
     options?: { count: boolean },
@@ -106,8 +115,7 @@ export class EntityManager<
       .find(query)
       .pipe(
         concatAll(),
-        concatMap((entity) => this.populateRelationships(entity)),
-        map((entity) => this.transform(entity)),
+        concatMap((entity) => this.transform(entity)),
         toArray(),
       );
     const count$: Observable<number> = options?.count
@@ -123,8 +131,7 @@ export class EntityManager<
     dto: EntityCreateDto<TEntity>,
   ): Observable<EntityResponse<TEntity>> {
     return this._entity.repository.create(dto).pipe(
-      concatMap((entity) => this.populateRelationships(entity)),
-      map((entity) => this.transform(entity)),
+      concatMap((entity) => this.transform(entity)),
       map((entity) => new EntityResponse(entity)),
     );
   }
@@ -133,16 +140,9 @@ export class EntityManager<
     return this._entity.repository.read(id).pipe(
       concatMap((entity) => {
         if (isNotNullOrUndefined(entity)) {
-          return this.populateRelationships(entity);
-        } else {
-          return of(entity);
-        }
-      }),
-      map((entity) => {
-        if (isNotNullOrUndefined(entity)) {
           return this.transform(entity);
         } else {
-          return entity;
+          return of(entity);
         }
       }),
       map((entity) => new EntityResponse(entity)),
@@ -156,16 +156,9 @@ export class EntityManager<
     return this._entity.repository.update(id, dto).pipe(
       concatMap((entity) => {
         if (isNotNullOrUndefined(entity)) {
-          return this.populateRelationships(entity);
-        } else {
-          return of(entity);
-        }
-      }),
-      map((entity) => {
-        if (isNotNullOrUndefined(entity)) {
           return this.transform(entity);
         } else {
-          return entity;
+          return of(entity);
         }
       }),
       map((entity) => new EntityResponse(entity)),
@@ -176,13 +169,51 @@ export class EntityManager<
     return this._entity.repository.delete(id);
   }
 
+  public findRelated<TRelated extends Entity, TKey extends TRelationships>(
+    key: TKey,
+    id1: string,
+    options?: { count: boolean },
+  ): Observable<TypedRelationshipRelatedResponse<TEntity[TKey], TRelated>> {
+    const definition = this._relationships[
+      key
+    ] as EntityManagerRelationshipDefinition<TRelated>;
+    const { descriptor, repository } = definition;
+    const { kind, related } = descriptor;
+    const relatedManager = this._service.get<TRelated>(related());
+
+    const entities$: Observable<TRelated[]> = repository.findRelated(id1).pipe(
+      concatAll(),
+      concatMap((entity) => relatedManager.transform(entity)),
+      toArray(),
+    );
+
+    const count$: Observable<number | undefined> = options?.count
+      ? repository.count(id1)
+      : of(undefined);
+
+    return forkJoin([entities$, count$]).pipe(
+      map(([entities, total]) => {
+        if (kind === 'toOne') {
+          const entity = entities.length > 0 ? entities[0] : undefined;
+
+          return new EntityResponse(entity);
+        } else {
+          return new EntitiesResponse(entities, total);
+        }
+      }),
+      map(
+        (r) => r as TypedRelationshipRelatedResponse<TEntity[TKey], TRelated>,
+      ),
+    );
+  }
+
   public findRelationship<TKey extends TRelationships>(
     key: TKey,
     id1: string,
     options?: { count: boolean },
   ): Observable<TypedRelationshipResponse<TEntity[TKey]>> {
     const { descriptor, repository } = this._relationships[key];
-    const { kind, target } = descriptor;
+    const { kind, related } = descriptor;
 
     const ids$: Observable<string[]> = repository.find(id1).pipe(
       concatAll(),
@@ -199,9 +230,9 @@ export class EntityManager<
         if (kind === 'toOne') {
           const id = ids.length > 0 ? ids[0] : undefined;
 
-          return new RelationshipResponse(target, id);
+          return new RelationshipResponse(related(), id);
         } else {
-          return new RelationshipsResponse(target, ids, total);
+          return new RelationshipsResponse(related(), ids, total);
         }
       }),
       map((r) => r as TypedRelationshipResponse<TEntity[TKey]>),
@@ -215,7 +246,7 @@ export class EntityManager<
     createdBy: string,
   ): Observable<TypedRelationshipResponse<TEntity[TKey]>> {
     const { descriptor, repository } = this._relationships[key];
-    const { kind, target } = descriptor;
+    const { kind, related } = descriptor;
 
     return repository.create(id1, id2set, createdBy).pipe(
       concatAll(),
@@ -225,9 +256,9 @@ export class EntityManager<
         if (kind === 'toOne') {
           const id = ids.length > 0 ? ids[0] : undefined;
 
-          return new RelationshipResponse(target, id);
+          return new RelationshipResponse(related(), id);
         } else {
-          return new RelationshipsResponse(target, ids);
+          return new RelationshipsResponse(related(), ids);
         }
       }),
       map((r) => r as TypedRelationshipResponse<TEntity[TKey]>),

@@ -233,17 +233,17 @@ export function NestApiResource(
     class ResourceRelationships {}
     renameType(ResourceRelationships, `${resourceName}Relationships`);
 
-    for (const { name, type, kind, openapi } of fields.relationships) {
-      const entityType: Type = type();
+    for (const { name, descriptor, openapi } of fields.relationships) {
+      const relatedType: Type = descriptor.related();
       const model: Type =
-        kind === 'toMany'
-          ? NestApiResourceRelationshipToMany(entityType, options)
-          : NestApiResourceRelationshipToOne(entityType, options);
+        descriptor.kind === 'toMany'
+          ? NestApiResourceRelationshipToMany(relatedType, options)
+          : NestApiResourceRelationshipToOne(relatedType, options);
       const kindSection: string =
-        kind.slice(0, 1).toUpperCase() + kind.slice(1);
+        descriptor.kind.slice(0, 1).toUpperCase() + descriptor.kind.slice(1);
       renameType(
         model,
-        `${resourceName}Relationship${kindSection}${entityType.name}`,
+        `${resourceName}Relationship${kindSection}${relatedType.name}`,
       );
 
       ApiProperty({

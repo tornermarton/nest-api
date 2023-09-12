@@ -38,7 +38,7 @@ function copyMetadata<O extends Entity, N, K extends keyof O>(
             ...r.openapi,
             ...openapi,
             // If it is a toMany relationship it is considered optional for request DTOs
-            required: r.kind === 'toMany' ? false : openapi.required,
+            required: r.descriptor.kind === 'toMany' ? false : openapi.required,
           },
         })),
       meta: [],

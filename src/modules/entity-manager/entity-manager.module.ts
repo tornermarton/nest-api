@@ -1,99 +1,86 @@
 import { DynamicModule, FactoryProvider, Module, Type } from '@nestjs/common';
 
-import {
-  EntityManager,
-  EntityManagerRelationshipDefinition,
-} from './entity-manager';
+import { EntityManagerService } from './entity-manager.service';
 import { getEntityManagerToken } from './utils';
-import { Entity } from '../../core';
+import { getEntityMetadata, getInverseRelationshipDescriptor } from '../../api';
+import { isNotNullOrUndefined } from '../../core';
 import {
-  EntityRepository,
   getEntityRepositoryToken,
   getRelationshipRepositoryToken,
   RelationshipDescriptor,
-  RelationshipRepository,
 } from '../../repository';
 
-type EntityManagerModuleEntityDefinition<T extends Entity = any> = {
-  type: Type<T>;
-  relationships: {
-    key: Extract<keyof T, string>;
-    descriptor: RelationshipDescriptor<string, T>;
-  }[];
-};
-
 type EntityManagerModuleOptions = {
-  entities: EntityManagerModuleEntityDefinition[];
-  repositoryModule: DynamicModule;
+  entities: Type[];
+  repositoryModule: any;
 };
-
-export class EntityManagerModuleEntitiesBuilder {
-  private readonly _entities: EntityManagerModuleEntityDefinition[] = [];
-
-  public entity<T extends Entity>(
-    definition: EntityManagerModuleEntityDefinition<T>,
-  ): EntityManagerModuleEntitiesBuilder {
-    this._entities.push(definition);
-
-    return this;
-  }
-
-  public build(): EntityManagerModuleEntityDefinition[] {
-    return this._entities;
-  }
-}
 
 @Module({})
 export class EntityManagerModule {
-  public static forFeature(options: EntityManagerModuleOptions): DynamicModule {
-    const providers: FactoryProvider[] = options.entities.map(
-      <
-        TEntity extends Entity,
-        TRelationships extends Extract<keyof TEntity, string>,
-      >({
-        type,
-        relationships,
-      }: EntityManagerModuleEntityDefinition<TEntity>) => {
-        const provide: string = getEntityManagerToken(type);
+  public static forFeature({
+    entities,
+    repositoryModule,
+  }: EntityManagerModuleOptions): DynamicModule {
+    // TODO: deduplicate array
+    const relationships: RelationshipDescriptor<any>[] = entities
+      .map((type) => getEntityMetadata(type.prototype))
+      .map(({ fields }) => fields.relationships)
+      .flat()
+      .map(({ descriptor }) => {
+        const inverseDescriptor = getInverseRelationshipDescriptor(descriptor);
 
-        const entityToken: string = getEntityRepositoryToken(type);
-        const relationshipTokens: string[] = Object.values(relationships)
-          .map(({ descriptor }) => descriptor)
-          .map(({ name }) => getRelationshipRepositoryToken(name));
+        if (isNotNullOrUndefined(inverseDescriptor)) {
+          return [descriptor, inverseDescriptor];
+        } else {
+          return [descriptor];
+        }
+      })
+      .flat();
 
-        return {
-          provide: provide,
-          useFactory: (
-            entityRepository: EntityRepository<TEntity>,
-            ...relationshipRepositories: RelationshipRepository<any>[]
-          ): EntityManager<TEntity, TRelationships> => {
-            const relationshipDefinitions = relationships.reduce(
-              (acc, { key, descriptor }, idx) => {
-                acc[key] = {
-                  repository: relationshipRepositories[idx],
-                  descriptor: descriptor,
-                };
+    // Add related entities
+    relationships.forEach(({ related }) => entities.push(related()));
 
-                return acc;
-              },
-              {} as Record<string, EntityManagerRelationshipDefinition>,
-            );
-
-            return new EntityManager({
-              entity: { type, repository: entityRepository },
-              relationships: relationshipDefinitions,
-            });
-          },
-          inject: [entityToken, ...relationshipTokens],
-        };
-      },
+    const entityTokens: string[] = entities.map((type) =>
+      getEntityRepositoryToken(type),
     );
+    const relationshipTokens: string[] = relationships.map(({ name }) =>
+      getRelationshipRepositoryToken(name),
+    );
+
+    const serviceProvider: FactoryProvider = {
+      provide: EntityManagerService,
+      useFactory: (...repositories: any[]) => {
+        const entityDefinitions = entities.map((type, index) => ({
+          type,
+          repository: repositories[index],
+        }));
+
+        const relationshipDefinitions = relationships.map(
+          (descriptor, index) => ({
+            descriptor,
+            repository: repositories[entities.length + index],
+          }),
+        );
+
+        return new EntityManagerService(
+          entityDefinitions,
+          relationshipDefinitions,
+        );
+      },
+      inject: [...entityTokens, ...relationshipTokens],
+    };
+
+    const managerProviders: FactoryProvider[] = entities.map((type) => ({
+      provide: getEntityManagerToken(type),
+      useFactory: (service: EntityManagerService) => service.get(type),
+      inject: [EntityManagerService],
+    }));
 
     return {
       module: EntityManagerModule,
-      imports: [options.repositoryModule],
-      providers: providers,
-      exports: [options.repositoryModule, ...providers],
+      imports: [repositoryModule.forFeature({ entities, relationships })],
+      providers: [serviceProvider, ...managerProviders],
+      exports: [repositoryModule, serviceProvider, ...managerProviders],
     };
   }
 }

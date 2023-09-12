@@ -15,13 +15,13 @@ import { Connection, Model, Schema, SchemaTypes } from 'mongoose';
 import { MongooseEntityRepository } from './mongoose-entity-repository';
 import { MongooseRelationship } from './mongoose-relationship';
 import { MongooseRelationshipRepository } from './mongoose-relationship-repository';
+import { getInverseRelationshipDescriptor } from '../../api';
 import { Entity, isNotNullOrUndefined, uuid } from '../../core';
 import {
   getEntityRepositoryToken,
   getModelToken,
   getRelationshipRepositoryToken,
   RelationshipDescriptor,
-  RelationshipDescriptorMap,
 } from '../../repository';
 
 type MongooseConnection = {
@@ -35,18 +35,18 @@ type MongooseConnection = {
 
 type MongooseRepositoryModuleRootOptions = {
   connection: MongooseConnection;
-  relationships?: RelationshipDescriptorMap;
-};
-
-type MongooseRepositoryModuleFeatureEntityOptions<T = any> = {
-  type: Type<T>;
 };
 
 type MongooseRepositoryModuleFeatureOptions = {
-  entities: MongooseRepositoryModuleFeatureEntityOptions[];
+  entities: Type[];
+  relationships: RelationshipDescriptor[];
 };
 
 function createEntityModel<T>(type: Type<T>, connection: Connection): Model<T> {
+  if (isNotNullOrUndefined(connection.models[type.name])) {
+    return connection.models[type.name] as Model<T>;
+  }
+
   const schema: Schema<T> = new Schema()
     .add(SchemaFactory.createForClass(type))
     .add({
@@ -68,6 +68,10 @@ function createRelationshipModel(
   name: string,
   connection: Connection,
 ): Model<MongooseRelationship> {
+  if (isNotNullOrUndefined(connection.models[name])) {
+    return connection.models[name] as Model<MongooseRelationship>;
+  }
+
   const schema: Schema<MongooseRelationship> = new Schema()
     .add(SchemaFactory.createForClass(MongooseRelationship))
     .add({
@@ -89,59 +93,7 @@ class MongooseRepositoryCoreModule {
   public static forRoot(
     options: MongooseRepositoryModuleRootOptions,
   ): DynamicModule {
-    const relationships = options.relationships ?? {};
-
-    const relationshipModelProviders: FactoryProvider[] = Object.values(
-      relationships,
-    )
-      .map((o) => o.name)
-      .map(
-        (name): FactoryProvider => ({
-          provide: getModelToken(name),
-          useFactory: (connection: Connection): Model<MongooseRelationship> =>
-            createRelationshipModel(name, connection),
-          inject: [getConnectionToken()],
-        }),
-      );
-
-    const relationshipRepositoryProviders: FactoryProvider[] = Object.values(
-      relationships,
-    ).map(
-      <TSource extends Entity, TTarget extends Entity>({
-        name,
-        target,
-        inverse,
-      }: RelationshipDescriptor<string, TSource, TTarget>): FactoryProvider => {
-        const provide: string = getRelationshipRepositoryToken(name);
-
-        const inject: string[] = [getConnectionToken(), getModelToken(name)];
-
-        if (isNotNullOrUndefined(inverse)) {
-          inject.push(getModelToken(inverse));
-        }
-
-        return {
-          provide: provide,
-          useFactory: (
-            connection: Connection,
-            model: Model<MongooseRelationship>,
-            inverseModel?: Model<MongooseRelationship>,
-          ): MongooseRelationshipRepository<TTarget> =>
-            new MongooseRelationshipRepository(
-              connection,
-              target,
-              model,
-              inverseModel,
-            ),
-          inject: inject,
-        };
-      },
-    );
-
-    const providers: FactoryProvider[] = [
-      ...relationshipModelProviders,
-      ...relationshipRepositoryProviders,
-    ];
+    const providers: FactoryProvider[] = [];
 
     return {
       module: MongooseRepositoryCoreModule,
@@ -171,9 +123,7 @@ export class MongooseRepositoryModule {
     options: MongooseRepositoryModuleFeatureOptions,
   ): DynamicModule {
     const entityModelProviders: FactoryProvider[] = options.entities.map(
-      <T extends Entity>({
-        type,
-      }: MongooseRepositoryModuleFeatureEntityOptions<T>): FactoryProvider => ({
+      <T extends Entity>(type: Type<T>): FactoryProvider => ({
         provide: getModelToken(type.name),
         useFactory: (connection: Connection): Model<T> =>
           createEntityModel(type, connection),
@@ -182,9 +132,7 @@ export class MongooseRepositoryModule {
     );
 
     const entityRepositoryProviders: FactoryProvider[] = options.entities.map(
-      <T extends Entity>({
-        type,
-      }: MongooseRepositoryModuleFeatureEntityOptions<T>): FactoryProvider => ({
+      <T extends Entity>(type: Type<T>): FactoryProvider => ({
         provide: getEntityRepositoryToken(type),
         useFactory: (model: Model<T>): MongooseEntityRepository<T> =>
           new MongooseEntityRepository(type, model),
@@ -192,9 +140,59 @@ export class MongooseRepositoryModule {
       }),
     );
 
+    const relationships = options.relationships ?? [];
+
+    const relationshipModelProviders: FactoryProvider[] = relationships
+      .map(({ name }) => name)
+      .map(
+        (name): FactoryProvider => ({
+          provide: getModelToken(name),
+          useFactory: (connection: Connection): Model<MongooseRelationship> =>
+            createRelationshipModel(name, connection),
+          inject: [getConnectionToken()],
+        }),
+      );
+
+    const relationshipRepositoryProviders: FactoryProvider[] =
+      relationships.map(
+        <TRelated extends Entity>(
+          descriptor: RelationshipDescriptor<TRelated>,
+        ): FactoryProvider => {
+          const { name, related } = descriptor;
+          const inverseDescriptor: RelationshipDescriptor | null =
+            getInverseRelationshipDescriptor(descriptor);
+
+          const provide: string = getRelationshipRepositoryToken(name);
+
+          const inject: string[] = [getConnectionToken(), getModelToken(name)];
+
+          if (isNotNullOrUndefined(inverseDescriptor)) {
+            inject.push(getModelToken(inverseDescriptor.name));
+          }
+
+          return {
+            provide: provide,
+            useFactory: (
+              connection: Connection,
+              model: Model<MongooseRelationship>,
+              inverseModel?: Model<MongooseRelationship>,
+            ): MongooseRelationshipRepository<TRelated> =>
+              new MongooseRelationshipRepository(
+                connection,
+                related(),
+                model,
+                inverseModel,
+              ),
+            inject: inject,
+          };
+        },
+      );
+
     const providers: FactoryProvider[] = [
       ...entityModelProviders,
       ...entityRepositoryProviders,
+      ...relationshipModelProviders,
+      ...relationshipRepositoryProviders,
     ];
 
     return {
