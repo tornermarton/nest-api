@@ -3,7 +3,6 @@ import { plainToInstance } from 'class-transformer';
 import {
   concatAll,
   concatMap,
-  EMPTY,
   forkJoin,
   from,
   Observable,
@@ -47,7 +46,7 @@ type TypedRelationshipResponse<T> = [T] extends [Array<unknown>]
   ? RelationshipsResponse
   : RelationshipResponse;
 
-type TypedRelationshipRelatedResponse<T, V> = [T] extends [Array<unknown>]
+type TypedRelatedResponse<T, V> = [T] extends [Array<unknown>]
   ? EntitiesResponse<V>
   : EntityResponse<V | null>;
 
@@ -77,53 +76,100 @@ export class EntityManager<
     this._relationships = relationships ?? {};
   }
 
-  private populateRelationships(
+  private populateRelationships<
+    TInclude extends Extract<keyof TEntity, TRelationships>,
+  >(
     entity: TEntity,
-  ): Observable<Record<keyof TEntity, unknown>> {
+    include: TInclude[] = [],
+  ): Observable<{ entity: Record<string, unknown>; included: unknown[] }> {
     return from(Object.keys(this._relationships) as TRelationships[]).pipe(
-      map((key) =>
-        this.findRelationship(key, entity.id).pipe(
-          map((r) => ({ [key]: r.data })),
-        ),
-      ),
+      map((key) => {
+        if (include.includes(key as TInclude)) {
+          return this.findRelated(key, entity.id).pipe(
+            map(({ data }) => ({
+              relationships: {
+                [key]: Array.isArray(data)
+                  ? data.map(({ id }) => id)
+                  : data !== null
+                  ? data.id
+                  : undefined,
+              },
+              included: Array.isArray(data)
+                ? data
+                : data !== null
+                ? [data]
+                : [],
+            })),
+          );
+        } else {
+          return this.findRelationship(key, entity.id).pipe(
+            map(({ data }) => ({
+              relationships: { [key]: data },
+              included: [],
+            })),
+          );
+        }
+      }),
       toArray(),
       concatMap((observables) => forkJoin(observables)),
       concatAll(),
-      reduce((acc, relationship) => ({
-        ...acc,
-        ...relationship,
+      reduce((acc, { relationships, included }) => ({
+        relationships: {
+          ...acc.relationships,
+          ...relationships,
+        },
+        included: [...acc.included, ...included],
       })),
-      map((relationships) => ({ ...entity, ...relationships })),
+      map(({ relationships, included }) => ({
+        entity: { ...entity, ...relationships },
+        included: included,
+      })),
     );
   }
 
-  public transform(entity: TEntity): Observable<TEntity> {
-    return this.populateRelationships(entity).pipe(
-      map((e) =>
-        plainToInstance(this._entity.type, e, {
+  public transform<TInclude extends Extract<keyof TEntity, TRelationships>>(
+    entity: TEntity,
+    include: TInclude[] = [],
+  ): Observable<{ entity: TEntity; included: unknown[] }> {
+    return this.populateRelationships(entity, include).pipe(
+      map(({ entity, included }) => ({
+        entity: plainToInstance(this._entity.type, entity, {
           excludeExtraneousValues: true,
         }),
-      ),
+        included,
+      })),
     );
   }
 
-  public find<TFilter>(
-    query: IQueryDto<TEntity, TFilter>,
+  public find<TFilter, TInclude extends Extract<keyof TEntity, TRelationships>>(
+    query: IQueryDto<TEntity, TFilter, TInclude>,
     options?: { count: boolean },
   ): Observable<EntitiesResponse<TEntity>> {
-    const entities$: Observable<TEntity[]> = this._entity.repository
-      .find(query)
-      .pipe(
+    const entities$: Observable<{ entities: TEntity[]; included?: unknown[] }> =
+      this._entity.repository.find(query).pipe(
         concatAll(),
-        concatMap((entity) => this.transform(entity)),
-        toArray(),
+        concatMap((entity) => this.transform(entity, query.include)),
+        reduce(
+          (acc, { entity, included }) => ({
+            entities: [...acc.entities, entity],
+            included: [...acc.included, ...included],
+          }),
+          { entities: [] as TEntity[], included: [] as unknown[] },
+        ),
+        map(({ entities, included }) => ({
+          entities,
+          included: query.include.length > 0 ? included : undefined,
+        })),
       );
-    const count$: Observable<number> = options?.count
+    const count$: Observable<number | undefined> = options?.count
       ? this._entity.repository.count(query)
-      : EMPTY;
+      : of(undefined);
 
     return forkJoin([entities$, count$]).pipe(
-      map(([entities, total]) => new EntitiesResponse(entities, total)),
+      map(
+        ([{ entities, included }, total]) =>
+          new EntitiesResponse(entities, included, total),
+      ),
     );
   }
 
@@ -132,7 +178,7 @@ export class EntityManager<
   ): Observable<EntityResponse<TEntity>> {
     return this._entity.repository.create(dto).pipe(
       concatMap((entity) => this.transform(entity)),
-      map((entity) => new EntityResponse(entity)),
+      map(({ entity }) => new EntityResponse(entity)),
     );
   }
 
@@ -140,7 +186,7 @@ export class EntityManager<
     return this._entity.repository.read(id).pipe(
       concatMap((entity) => {
         if (isNotNullOrUndefined(entity)) {
-          return this.transform(entity);
+          return this.transform(entity).pipe(map(({ entity }) => entity));
         } else {
           return of(entity);
         }
@@ -156,7 +202,7 @@ export class EntityManager<
     return this._entity.repository.update(id, dto).pipe(
       concatMap((entity) => {
         if (isNotNullOrUndefined(entity)) {
-          return this.transform(entity);
+          return this.transform(entity).pipe(map(({ entity }) => entity));
         } else {
           return of(entity);
         }
@@ -173,7 +219,7 @@ export class EntityManager<
     key: TKey,
     id1: string,
     options?: { count: boolean },
-  ): Observable<TypedRelationshipRelatedResponse<TEntity[TKey], TRelated>> {
+  ): Observable<TypedRelatedResponse<TEntity[TKey], TRelated>> {
     const definition = this._relationships[
       key
     ] as EntityManagerRelationshipDefinition<TRelated>;
@@ -184,6 +230,7 @@ export class EntityManager<
     const entities$: Observable<TRelated[]> = repository.findRelated(id1).pipe(
       concatAll(),
       concatMap((entity) => relatedManager.transform(entity)),
+      map(({ entity }) => entity),
       toArray(),
     );
 
@@ -198,12 +245,10 @@ export class EntityManager<
 
           return new EntityResponse(entity);
         } else {
-          return new EntitiesResponse(entities, total);
+          return new EntitiesResponse(entities, undefined, total);
         }
       }),
-      map(
-        (r) => r as TypedRelationshipRelatedResponse<TEntity[TKey], TRelated>,
-      ),
+      map((r) => r as TypedRelatedResponse<TEntity[TKey], TRelated>),
     );
   }
 
@@ -217,7 +262,7 @@ export class EntityManager<
 
     const ids$: Observable<string[]> = repository.find(id1).pipe(
       concatAll(),
-      map((relationship) => relationship.id2),
+      map(({ id2 }) => id2),
       toArray(),
     );
 
@@ -250,7 +295,7 @@ export class EntityManager<
 
     return repository.create(id1, id2set, createdBy).pipe(
       concatAll(),
-      map((relationship) => relationship.id2),
+      map(({ id2 }) => id2),
       toArray(),
       map((ids) => {
         if (kind === 'toOne') {

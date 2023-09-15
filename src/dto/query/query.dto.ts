@@ -11,38 +11,42 @@ import {
   ValidateNested,
 } from 'class-validator';
 
-export class QueryDtoPage {
+export class PageDto {
   public static DEFAULT_OFFSET: number = 0;
   public static DEFAULT_LIMIT: number = 100;
 
   @ApiProperty({
     required: false,
     minimum: 0,
-    default: QueryDtoPage.DEFAULT_OFFSET,
+    default: PageDto.DEFAULT_OFFSET,
   })
   @IsOptional()
   @IsInt()
   @Min(0)
   @TransformType(() => Number)
-  public readonly offset: number = QueryDtoPage.DEFAULT_OFFSET;
+  public readonly offset: number = PageDto.DEFAULT_OFFSET;
 
   @ApiProperty({
     required: false,
     minimum: 0,
-    default: QueryDtoPage.DEFAULT_LIMIT,
+    default: PageDto.DEFAULT_LIMIT,
   })
   @IsOptional()
   @IsInt()
   @Min(0)
   @TransformType(() => Number)
-  public readonly limit: number = QueryDtoPage.DEFAULT_LIMIT;
+  public readonly limit: number = PageDto.DEFAULT_LIMIT;
 }
 
-// TODO: type filter better
-export interface IQueryDto<TModel, TFilter> {
+export interface IQueryDto<
+  TModel,
+  TFilter,
+  TInclude extends Extract<keyof TModel, string>,
+> {
   readonly filter: TFilter;
   readonly sort: string[];
-  readonly page: QueryDtoPage;
+  readonly include: TInclude[];
+  readonly page: PageDto;
 }
 
 export type SortDefinition<
@@ -78,13 +82,17 @@ function parseSortDefinitions<
 export function QueryDto<
   TModel,
   TFilter,
-  TSort extends Extract<keyof TModel, string>,
+  TSort extends Extract<keyof TModel, string> = never,
+  TInclude extends Extract<keyof TModel, string> = never,
 >(
   type: Type<TModel>,
   filter: Type<TFilter>,
-  sort: readonly SortDefinition<TModel, TSort>[],
-): Type<IQueryDto<TModel, TFilter>> {
-  class QueryDtoClass implements IQueryDto<TModel, TFilter> {
+  sort: readonly SortDefinition<TModel, TSort>[] = [],
+  include: readonly TInclude[] = [],
+): Type<IQueryDto<TModel, TFilter, TInclude>> {
+  const sortOptions: string[] = parseSortDefinitions(sort);
+
+  class QueryDtoClass implements IQueryDto<TModel, TFilter, TInclude> {
     @IsOptional()
     @IsObject()
     @ValidateNested()
@@ -93,15 +101,20 @@ export function QueryDto<
 
     @IsOptional()
     @IsString({ each: true })
-    @IsIn(parseSortDefinitions(sort), { each: true })
+    @IsIn(sortOptions, { each: true })
     @Transform(({ value }) => (typeof value === 'string' ? [value] : value))
-    // TODO: type sort somehow
     public readonly sort: string[] = [];
 
     @IsOptional()
+    @IsString({ each: true })
+    @IsIn(include, { each: true })
+    @Transform(({ value }) => (typeof value === 'string' ? [value] : value))
+    public readonly include: TInclude[] = [];
+
+    @IsOptional()
     @ValidateNested()
-    @TransformType(() => QueryDtoPage)
-    public readonly page: QueryDtoPage = new QueryDtoPage();
+    @TransformType(() => PageDto)
+    public readonly page: PageDto = new PageDto();
   }
 
   return QueryDtoClass;

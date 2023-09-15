@@ -13,23 +13,23 @@ export type EntityUpdateDto<T extends Entity> = Partial<
 > &
   Pick<T, 'updatedBy'>;
 
-export abstract class EntityRepository<TModel extends Entity> {
+export abstract class EntityRepository<TEntity extends Entity> {
   public abstract count<TFilter>(
-    query: IQueryDto<TModel, TFilter>,
+    query: Omit<IQueryDto<TEntity, TFilter, never>, 'include'>,
   ): Observable<number>;
 
   public abstract find<TFilter>(
-    query: IQueryDto<TModel, TFilter>,
-  ): Observable<TModel[]>;
+    query: Omit<IQueryDto<TEntity, TFilter, never>, 'include'>,
+  ): Observable<TEntity[]>;
 
-  public abstract create(dto: EntityCreateDto<TModel>): Observable<TModel>;
+  public abstract create(dto: EntityCreateDto<TEntity>): Observable<TEntity>;
 
-  public abstract read(id: string): Observable<TModel | null>;
+  public abstract read(id: string): Observable<TEntity | null>;
 
   public abstract update(
     id: string,
-    dto: EntityUpdateDto<TModel>,
-  ): Observable<TModel | null>;
+    dto: EntityUpdateDto<TEntity>,
+  ): Observable<TEntity | null>;
 
   public abstract delete(id: string): Observable<void>;
 }

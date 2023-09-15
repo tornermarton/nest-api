@@ -293,6 +293,10 @@ export class ApiResponseInterceptor
               data: r.data.map((e) => this.transformEntity(e)),
               links: getNestApiEntitiesDocumentLinks(request, r.total),
               paging: getNestApiDocumentPaging(request, r.total),
+              included: r.included?.map((e) =>
+                // eslint-disable-next-line @typescript-eslint/ban-types
+                this.transformEntity(e as Function),
+              ),
             };
           } else if (r instanceof RelationshipResponse) {
             return {

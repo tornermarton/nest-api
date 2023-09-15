@@ -15,7 +15,7 @@ import {
 import { ParameterObject } from '@nestjs/swagger/dist/interfaces/open-api-spec.interface';
 import { Request } from 'express';
 
-import { QueryDtoPage } from '../../dto';
+import { PageDto } from '../../dto';
 import {
   NestApiEntityRequestBodyTransformationPipe,
   NestApiRelationshipRequestBodyTransformationPipe,
@@ -71,12 +71,25 @@ function createQueryParameterObjects(filterType: Type): ParameterObject[] {
       },
     },
     {
+      name: 'include',
+      in: 'query',
+      required: false,
+      style: 'form',
+      explode: false,
+      schema: {
+        type: 'array',
+        items: {
+          type: 'string',
+        },
+      },
+    },
+    {
       name: 'page',
       in: 'query',
       required: false,
       style: 'deepObject',
       schema: {
-        $ref: getSchemaPath(QueryDtoPage),
+        $ref: getSchemaPath(PageDto),
       },
     },
   ];
@@ -93,7 +106,7 @@ export const NestApiRequestQuery = <TModel extends Type>(
     const descriptor = Object.getOwnPropertyDescriptor(target, propertyKey);
 
     ApiExtraModels(model)(target, propertyKey, descriptor);
-    ApiExtraModels(QueryDtoPage)(target, propertyKey, descriptor);
+    ApiExtraModels(PageDto)(target, propertyKey, descriptor);
     SilentQuery(NestApiRequestQueryValidationPipe)(
       target,
       propertyKey,

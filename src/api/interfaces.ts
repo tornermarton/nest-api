@@ -1,3 +1,5 @@
+import { NestApiDocumentPaging } from './models';
+
 export type NestApiResourceIdentifierInterface = {
   readonly id: string;
   readonly type: string;
@@ -82,6 +84,8 @@ export type NestApiEntitiesResponseDocumentInterface =
   NestApiCommonDocumentInterface & {
     readonly data: NestApiResourceInterface[];
     readonly links: NestApiEntitiesResponseDocumentLinksInterface;
+    readonly paging: NestApiDocumentPaging;
+    readonly included?: unknown[];
   };
 
 export type NestApiRelationshipRequestDocumentInterface = {
@@ -113,6 +117,7 @@ export type NestApiRelationshipsResponseDocumentInterface =
   NestApiCommonDocumentInterface & {
     readonly data: NestApiResourceIdentifierInterface[];
     readonly links: NestApiRelationshipsResponseDocumentLinksInterface;
+    readonly paging: NestApiDocumentPaging;
   };
 
 type NestApiCommonErrorInterface = {

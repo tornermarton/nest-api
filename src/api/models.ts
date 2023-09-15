@@ -2,9 +2,11 @@ import { Type } from '@nestjs/common';
 import {
   ApiProperty,
   ApiPropertyOptional,
+  getSchemaPath,
   IntersectionType,
   PickType,
 } from '@nestjs/swagger';
+import { ReferenceObject } from '@nestjs/swagger/dist/interfaces/open-api-spec.interface';
 import { Type as TransformType } from 'class-transformer';
 import {
   ArrayNotEmpty,
@@ -388,6 +390,12 @@ export function NestApiEntitiesResponseDocument(type: Type): Type {
   class Resource extends NestApiResource(type) {}
   renameType(Resource, name);
 
+  const metadata: NestApiEntityMetadata = getEntityMetadata(type.prototype);
+  const includedRefs: ReferenceObject[] = metadata.fields.relationships
+    .map(({ descriptor }) => descriptor)
+    .map(({ related }) => related())
+    .map((t) => ({ $ref: getSchemaPath(t) }));
+
   class Document extends NestApiCommonDocument {
     @ApiProperty({ type: Resource, isArray: true })
     public readonly data: Resource[];
@@ -397,6 +405,9 @@ export function NestApiEntitiesResponseDocument(type: Type): Type {
 
     @ApiProperty({ type: NestApiDocumentPaging })
     public readonly paging: NestApiDocumentPaging;
+
+    @ApiPropertyOptional({ type: 'array', items: { oneOf: includedRefs } })
+    public readonly included?: unknown[];
   }
   renameType(Document, `${name}EntitiesResponseDocument`);
 

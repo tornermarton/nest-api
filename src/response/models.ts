@@ -5,7 +5,11 @@ export class EntityResponse<T = unknown> {
 }
 
 export class EntitiesResponse<T = unknown> {
-  constructor(public readonly data: T[], public readonly total?: number) {}
+  constructor(
+    public readonly data: T[],
+    public readonly included?: unknown[],
+    public readonly total?: number,
+  ) {}
 }
 
 export class RelationshipResponse<T = unknown> {

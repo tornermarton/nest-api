@@ -45,7 +45,7 @@ export class MongooseEntityRepository<
   }
 
   public count<TFilter>(
-    query: IQueryDto<TEntity, TFilter>,
+    query: Omit<IQueryDto<TEntity, TFilter, never>, 'include'>,
   ): Observable<number> {
     const filter = filterDtoToQuery(query.filter);
 
@@ -53,7 +53,7 @@ export class MongooseEntityRepository<
   }
 
   public find<TFilter>(
-    query: IQueryDto<TEntity, TFilter>,
+    query: Omit<IQueryDto<TEntity, TFilter, never>, 'include'>,
   ): Observable<TEntity[]> {
     const filter = filterDtoToQuery(query.filter);
     const sort = sortDtoToQuery(query.sort);
@@ -65,6 +65,15 @@ export class MongooseEntityRepository<
       .limit(query.page.limit);
 
     return from(req.exec()).pipe(
+      concatAll(),
+      map((entity) => entity.toObject()),
+      map((entity) => this.transform(entity)),
+      toArray(),
+    );
+  }
+
+  public findByIds(ids: string[]): Observable<TEntity[]> {
+    return from(this._model.find({ id: ids }).exec()).pipe(
       concatAll(),
       map((entity) => entity.toObject()),
       map((entity) => this.transform(entity)),
