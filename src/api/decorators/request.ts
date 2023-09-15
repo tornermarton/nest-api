@@ -46,7 +46,27 @@ const SilentQuery = createParamDecorator(
   },
 );
 
-function createQueryParameterObjects(filterType: Type): ParameterObject[] {
+function createEntityQueryParameterObjects(): ParameterObject[] {
+  return [
+    {
+      name: 'include',
+      in: 'query',
+      required: false,
+      style: 'form',
+      explode: false,
+      schema: {
+        type: 'array',
+        items: {
+          type: 'string',
+        },
+      },
+    },
+  ];
+}
+
+function createEntitiesQueryParameterObjects(
+  filterType: Type,
+): ParameterObject[] {
   return [
     {
       name: 'filter',
@@ -95,7 +115,36 @@ function createQueryParameterObjects(filterType: Type): ParameterObject[] {
   ];
 }
 
-export const NestApiRequestQuery = <TModel extends Type>(
+export const NestApiEntityRequestQuery = (): ParameterDecorator => {
+  return (
+    target: object,
+    propertyKey: string | symbol,
+    parameterIndex: number,
+  ) => {
+    const descriptor = Object.getOwnPropertyDescriptor(target, propertyKey);
+
+    SilentQuery(NestApiRequestQueryValidationPipe)(
+      target,
+      propertyKey,
+      parameterIndex,
+    );
+
+    const parameters: ParameterObject[] | undefined = Reflect.getMetadata(
+      SWAGGER_API_PARAMETERS_METADATA_KEY,
+      descriptor?.value,
+    );
+
+    const query: ParameterObject[] = createEntityQueryParameterObjects();
+
+    Reflect.defineMetadata(
+      SWAGGER_API_PARAMETERS_METADATA_KEY,
+      [...(parameters ?? []), ...query],
+      descriptor?.value,
+    );
+  };
+};
+
+export const NestApiEntitiesRequestQuery = <TModel extends Type>(
   model: TModel,
 ): ParameterDecorator => {
   return (
@@ -118,7 +167,7 @@ export const NestApiRequestQuery = <TModel extends Type>(
       descriptor?.value,
     );
 
-    const query: ParameterObject[] = createQueryParameterObjects(model);
+    const query: ParameterObject[] = createEntitiesQueryParameterObjects(model);
 
     Reflect.defineMetadata(
       SWAGGER_API_PARAMETERS_METADATA_KEY,

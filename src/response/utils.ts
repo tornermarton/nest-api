@@ -11,7 +11,7 @@ import {
   NestApiEntityResponseDocumentLinksInterface,
 } from '../api';
 import { isNotNullOrUndefined } from '../core';
-import { IQueryDto, PageDto } from '../dto';
+import { IEntitiesQueryDto, PageDto } from '../dto';
 
 export function isNotEmptyEntityResponse<T>(
   response: EntityResponse<T | null | undefined>,
@@ -68,7 +68,7 @@ type Mutable<Type> = {
 
 function updateQuery(
   url: URL,
-  query: IQueryDto<unknown, unknown, never>,
+  query: IEntitiesQueryDto<unknown, unknown, never>,
 ): string {
   // eslint-disable-next-line @typescript-eslint/no-unsafe-call
   url.search = stringify(query, {
@@ -85,10 +85,13 @@ function getNestApiPaginationLinks(
 ): NestApiPaginationLinksInterface {
   const url: URL = new URL(base);
   // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-  const query: Mutable<IQueryDto<unknown, unknown, never>> = parse(url.search, {
-    ignoreQueryPrefix: true,
-    comma: true,
-  });
+  const query: Mutable<IEntitiesQueryDto<unknown, unknown, never>> = parse(
+    url.search,
+    {
+      ignoreQueryPrefix: true,
+      comma: true,
+    },
+  );
 
   const paging: NestApiDocumentPaging = getNestApiDocumentPaging(
     request,

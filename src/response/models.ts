@@ -1,7 +1,7 @@
 import { Type } from '@nestjs/common';
 
 export class EntityResponse<T = unknown> {
-  constructor(public readonly data: T) {}
+  constructor(public readonly data: T, public readonly included?: unknown[]) {}
 }
 
 export class EntitiesResponse<T = unknown> {

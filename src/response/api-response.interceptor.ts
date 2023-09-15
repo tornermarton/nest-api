@@ -286,6 +286,10 @@ export class ApiResponseInterceptor
               meta: meta,
               data: this.transformEntity(r.data),
               links: getNestApiEntityDocumentLinks(request),
+              included: r.included?.map((e) =>
+                // eslint-disable-next-line @typescript-eslint/ban-types
+                this.transformEntity(e as Function),
+              ),
             };
           } else if (r instanceof EntitiesResponse) {
             return {

@@ -367,12 +367,21 @@ export function NestApiEntityResponseDocument(type: Type): Type {
   class Resource extends NestApiResource(type) {}
   renameType(Resource, name);
 
+  const metadata: NestApiEntityMetadata = getEntityMetadata(type.prototype);
+  const includedRefs: ReferenceObject[] = metadata.fields.relationships
+    .map(({ descriptor }) => descriptor)
+    .map(({ related }) => related())
+    .map((t) => ({ $ref: getSchemaPath(t) }));
+
   class Document extends NestApiCommonDocument {
     @ApiProperty({ type: Resource })
     public readonly data: Resource;
 
     @ApiProperty({ type: NestApiEntityResponseDocumentLinks })
     public readonly links: NestApiEntityResponseDocumentLinks;
+
+    @ApiPropertyOptional({ type: 'array', items: { oneOf: includedRefs } })
+    public readonly included?: unknown[];
   }
   renameType(Document, `${name}EntityResponseDocument`);
 

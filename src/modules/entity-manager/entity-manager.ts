@@ -14,7 +14,7 @@ import { map } from 'rxjs/operators';
 
 import { EntityManagerService } from './entity-manager.service';
 import { Entity, isNotNullOrUndefined } from '../../core';
-import { IQueryDto } from '../../dto';
+import { IEntitiesQueryDto, IEntityQueryDto } from '../../dto';
 import {
   EntityCreateDto,
   EntityRepository,
@@ -142,7 +142,7 @@ export class EntityManager<
   }
 
   public find<TFilter, TInclude extends Extract<keyof TEntity, TRelationships>>(
-    query: IQueryDto<TEntity, TFilter, TInclude>,
+    query: IEntitiesQueryDto<TEntity, TFilter, TInclude>,
     options?: { count: boolean },
   ): Observable<EntitiesResponse<TEntity>> {
     const entities$: Observable<{ entities: TEntity[]; included?: unknown[] }> =
@@ -182,16 +182,23 @@ export class EntityManager<
     );
   }
 
-  public read(id: string): Observable<EntityResponse<TEntity | null>> {
+  public read<TInclude extends Extract<keyof TEntity, TRelationships>>(
+    id: string,
+    query?: IEntityQueryDto<TEntity, TInclude>,
+  ): Observable<EntityResponse<TEntity | null>> {
     return this._entity.repository.read(id).pipe(
       concatMap((entity) => {
         if (isNotNullOrUndefined(entity)) {
-          return this.transform(entity).pipe(map(({ entity }) => entity));
+          return this.transform(entity, query?.include);
         } else {
-          return of(entity);
+          return of({ entity, included: undefined });
         }
       }),
-      map((entity) => new EntityResponse(entity)),
+      map(({ entity, included }) => ({
+        entity,
+        included: (query?.include?.length ?? 0) > 0 ? included : undefined,
+      })),
+      map(({ entity, included }) => new EntityResponse(entity, included)),
     );
   }
 

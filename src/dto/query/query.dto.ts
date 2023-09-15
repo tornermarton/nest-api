@@ -11,42 +11,29 @@ import {
   ValidateNested,
 } from 'class-validator';
 
-export class PageDto {
-  public static DEFAULT_OFFSET: number = 0;
-  public static DEFAULT_LIMIT: number = 100;
-
-  @ApiProperty({
-    required: false,
-    minimum: 0,
-    default: PageDto.DEFAULT_OFFSET,
-  })
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  @TransformType(() => Number)
-  public readonly offset: number = PageDto.DEFAULT_OFFSET;
-
-  @ApiProperty({
-    required: false,
-    minimum: 0,
-    default: PageDto.DEFAULT_LIMIT,
-  })
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  @TransformType(() => Number)
-  public readonly limit: number = PageDto.DEFAULT_LIMIT;
-}
-
-export interface IQueryDto<
+export interface IEntityQueryDto<
   TModel,
-  TFilter,
   TInclude extends Extract<keyof TModel, string>,
 > {
-  readonly filter: TFilter;
-  readonly sort: string[];
   readonly include: TInclude[];
-  readonly page: PageDto;
+}
+
+export function EntityQueryDto<
+  TModel,
+  TInclude extends Extract<keyof TModel, string> = never,
+>(
+  type: Type<TModel>,
+  include: readonly TInclude[] = [],
+): Type<IEntityQueryDto<TModel, TInclude>> {
+  class EntityQueryDtoClass implements IEntityQueryDto<TModel, TInclude> {
+    @IsOptional()
+    @IsString({ each: true })
+    @IsIn(include, { each: true })
+    @Transform(({ value }) => (typeof value === 'string' ? [value] : value))
+    public readonly include: TInclude[] = [];
+  }
+
+  return EntityQueryDtoClass;
 }
 
 export type SortDefinition<
@@ -79,7 +66,45 @@ function parseSortDefinitions<
     .flat();
 }
 
-export function QueryDto<
+export class PageDto {
+  public static DEFAULT_OFFSET: number = 0;
+  public static DEFAULT_LIMIT: number = 100;
+
+  @ApiProperty({
+    required: false,
+    minimum: 0,
+    default: PageDto.DEFAULT_OFFSET,
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @TransformType(() => Number)
+  public readonly offset: number = PageDto.DEFAULT_OFFSET;
+
+  @ApiProperty({
+    required: false,
+    minimum: 0,
+    default: PageDto.DEFAULT_LIMIT,
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @TransformType(() => Number)
+  public readonly limit: number = PageDto.DEFAULT_LIMIT;
+}
+
+export interface IEntitiesQueryDto<
+  TModel,
+  TFilter,
+  TInclude extends Extract<keyof TModel, string>,
+> {
+  readonly filter: TFilter;
+  readonly sort: string[];
+  readonly include: TInclude[];
+  readonly page: PageDto;
+}
+
+export function EntitiesQueryDto<
   TModel,
   TFilter,
   TSort extends Extract<keyof TModel, string> = never,
@@ -89,10 +114,12 @@ export function QueryDto<
   filter: Type<TFilter>,
   sort: readonly SortDefinition<TModel, TSort>[] = [],
   include: readonly TInclude[] = [],
-): Type<IQueryDto<TModel, TFilter, TInclude>> {
+): Type<IEntitiesQueryDto<TModel, TFilter, TInclude>> {
   const sortOptions: string[] = parseSortDefinitions(sort);
 
-  class QueryDtoClass implements IQueryDto<TModel, TFilter, TInclude> {
+  class EntitiesQueryDtoClass
+    implements IEntitiesQueryDto<TModel, TFilter, TInclude>
+  {
     @IsOptional()
     @IsObject()
     @ValidateNested()
@@ -117,5 +144,5 @@ export function QueryDto<
     public readonly page: PageDto = new PageDto();
   }
 
-  return QueryDtoClass;
+  return EntitiesQueryDtoClass;
 }
