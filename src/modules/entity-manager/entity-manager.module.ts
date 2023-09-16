@@ -37,8 +37,31 @@ export class EntityManagerModule {
       })
       .flat();
 
-    // Add related entities
-    relationships.forEach(({ related }) => entities.push(related()));
+    // TODO: deduplicate array
+    const relatedEntities: Type[] = relationships.map(({ related }) =>
+      related(),
+    );
+
+    // TODO: deduplicate array
+    const relatedRelationships: RelationshipDescriptor<any>[] = relatedEntities
+      .map((type) => getEntityMetadata(type.prototype))
+      .map(({ fields }) => fields.relationships)
+      .flat()
+      .map(({ descriptor }) => {
+        const inverseDescriptor = getInverseRelationshipDescriptor(descriptor);
+
+        if (isNotNullOrUndefined(inverseDescriptor)) {
+          return [descriptor, inverseDescriptor];
+        } else {
+          return [descriptor];
+        }
+      })
+      .flat();
+
+    // TODO: deduplicate array
+    entities.push(...relatedEntities);
+    // TODO: deduplicate array
+    relationships.push(...relatedRelationships);
 
     const entityTokens: string[] = entities.map((type) =>
       getEntityRepositoryToken(type),
