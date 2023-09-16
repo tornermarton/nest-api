@@ -1,9 +1,11 @@
 import { Type } from '@nestjs/common';
 import { ApiPropertyOptions } from '@nestjs/swagger';
+import { ParameterObject } from '@nestjs/swagger/dist/interfaces/open-api-spec.interface';
 
 import {
   NEST_API_ENTITY_METADATA_KEY,
   NEST_API_ENTITY_FIELDS_METADATA_KEY,
+  NEST_API_QUERY_METADATA_KEY,
 } from './constants';
 import { Entity, isNotNullOrUndefined, isNullOrUndefined } from '../core';
 import { RelationshipDescriptor } from '../repository';
@@ -24,6 +26,15 @@ export type NestApiEntityFieldsMetadata = {
 export type NestApiEntityMetadata = {
   type: string;
   fields: NestApiEntityFieldsMetadata;
+};
+
+export type NestApiQueryParameterMetadata = {
+  type?: Type;
+  openapi: ParameterObject;
+};
+
+export type NestApiQueryMetadata = {
+  parameters: NestApiQueryParameterMetadata[];
 };
 
 // eslint-disable-next-line @typescript-eslint/ban-types
@@ -103,4 +114,25 @@ export function getRelationshipDescriptors<TEntity extends Entity>(
     .filter(isNotNullOrUndefined);
 
   return [...descriptors, ...inverseDescriptors];
+}
+
+// eslint-disable-next-line @typescript-eslint/ban-types
+export function getQueryMetadata(target: Object): NestApiQueryMetadata {
+  const reflected: NestApiQueryMetadata | undefined = Reflect.getMetadata(
+    NEST_API_QUERY_METADATA_KEY,
+    target,
+  );
+
+  if (isNullOrUndefined(reflected)) {
+    return { parameters: [] };
+  }
+
+  return reflected;
+}
+export function setQueryMetadata(
+  // eslint-disable-next-line @typescript-eslint/ban-types
+  target: Object,
+  metadata: NestApiQueryMetadata,
+): void {
+  Reflect.defineMetadata(NEST_API_QUERY_METADATA_KEY, metadata, target);
 }

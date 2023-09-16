@@ -6,16 +6,11 @@ import {
   Param,
   Type,
 } from '@nestjs/common';
-import {
-  ApiBody,
-  ApiBodyOptions,
-  ApiExtraModels,
-  getSchemaPath,
-} from '@nestjs/swagger';
+import { ApiBody, ApiBodyOptions, ApiExtraModels } from '@nestjs/swagger';
 import { ParameterObject } from '@nestjs/swagger/dist/interfaces/open-api-spec.interface';
 import { Request } from 'express';
 
-import { PageDto } from '../../dto';
+import { isNotNullOrUndefined } from '../../core';
 import {
   NestApiEntityRequestBodyTransformationPipe,
   NestApiRelationshipRequestBodyTransformationPipe,
@@ -26,6 +21,7 @@ import {
   NestApiRequestQueryValidationPipe,
 } from '../../request';
 import { SWAGGER_API_PARAMETERS_METADATA_KEY } from '../constants';
+import { getQueryMetadata, NestApiQueryMetadata } from '../metadata';
 import {
   NestApiEntityRequestDocument,
   NestApiRelationshipRequestDocument,
@@ -46,105 +42,7 @@ const SilentQuery = createParamDecorator(
   },
 );
 
-function createEntityQueryParameterObjects(): ParameterObject[] {
-  return [
-    {
-      name: 'include',
-      in: 'query',
-      required: false,
-      style: 'form',
-      explode: false,
-      schema: {
-        type: 'array',
-        items: {
-          type: 'string',
-        },
-      },
-    },
-  ];
-}
-
-function createEntitiesQueryParameterObjects(
-  filterType: Type,
-): ParameterObject[] {
-  return [
-    {
-      name: 'filter',
-      in: 'query',
-      required: false,
-      style: 'deepObject',
-      schema: {
-        $ref: getSchemaPath(filterType),
-      },
-    },
-    {
-      name: 'sort',
-      in: 'query',
-      required: false,
-      style: 'form',
-      explode: false,
-      schema: {
-        type: 'array',
-        items: {
-          type: 'string',
-        },
-      },
-    },
-    {
-      name: 'include',
-      in: 'query',
-      required: false,
-      style: 'form',
-      explode: false,
-      schema: {
-        type: 'array',
-        items: {
-          type: 'string',
-        },
-      },
-    },
-    {
-      name: 'page',
-      in: 'query',
-      required: false,
-      style: 'deepObject',
-      schema: {
-        $ref: getSchemaPath(PageDto),
-      },
-    },
-  ];
-}
-
-export const NestApiEntityRequestQuery = (): ParameterDecorator => {
-  return (
-    target: object,
-    propertyKey: string | symbol,
-    parameterIndex: number,
-  ) => {
-    const descriptor = Object.getOwnPropertyDescriptor(target, propertyKey);
-
-    SilentQuery(NestApiRequestQueryValidationPipe)(
-      target,
-      propertyKey,
-      parameterIndex,
-    );
-
-    const parameters: ParameterObject[] | undefined = Reflect.getMetadata(
-      SWAGGER_API_PARAMETERS_METADATA_KEY,
-      descriptor?.value,
-    );
-
-    const query: ParameterObject[] = createEntityQueryParameterObjects();
-
-    Reflect.defineMetadata(
-      SWAGGER_API_PARAMETERS_METADATA_KEY,
-      [...(parameters ?? []), ...query],
-      descriptor?.value,
-    );
-  };
-};
-
-export const NestApiEntitiesRequestQuery = <TModel extends Type>(
+export const NestApiRequestQuery = <TModel extends Type>(
   model: TModel,
 ): ParameterDecorator => {
   return (
@@ -152,27 +50,34 @@ export const NestApiEntitiesRequestQuery = <TModel extends Type>(
     propertyKey: string | symbol,
     parameterIndex: number,
   ) => {
-    const descriptor = Object.getOwnPropertyDescriptor(target, propertyKey);
+    const descriptor: PropertyDescriptor | undefined =
+      Object.getOwnPropertyDescriptor(target, propertyKey);
 
-    ApiExtraModels(model)(target, propertyKey, descriptor);
-    ApiExtraModels(PageDto)(target, propertyKey, descriptor);
+    const parameters: ParameterObject[] =
+      Reflect.getMetadata(
+        SWAGGER_API_PARAMETERS_METADATA_KEY,
+        descriptor?.value,
+      ) ?? [];
+
+    const metadata: NestApiQueryMetadata = getQueryMetadata(model.prototype);
+    const metadataParameters: ParameterObject[] = metadata.parameters.map(
+      ({ openapi }) => openapi,
+    );
+    const metadataModels: Type[] = metadata.parameters
+      .map(({ type }) => type)
+      .filter(isNotNullOrUndefined);
+
+    Reflect.defineMetadata(
+      SWAGGER_API_PARAMETERS_METADATA_KEY,
+      [...parameters, ...metadataParameters],
+      descriptor?.value,
+    );
+
+    ApiExtraModels(...metadataModels)(target, propertyKey, descriptor);
     SilentQuery(NestApiRequestQueryValidationPipe)(
       target,
       propertyKey,
       parameterIndex,
-    );
-
-    const parameters: ParameterObject[] | undefined = Reflect.getMetadata(
-      SWAGGER_API_PARAMETERS_METADATA_KEY,
-      descriptor?.value,
-    );
-
-    const query: ParameterObject[] = createEntitiesQueryParameterObjects(model);
-
-    Reflect.defineMetadata(
-      SWAGGER_API_PARAMETERS_METADATA_KEY,
-      [...(parameters ?? []), ...query],
-      descriptor?.value,
     );
   };
 };

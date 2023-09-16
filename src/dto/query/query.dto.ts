@@ -1,5 +1,5 @@
 import { Type } from '@nestjs/common';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, getSchemaPath } from '@nestjs/swagger';
 import { Transform, Type as TransformType } from 'class-transformer';
 import {
   IsIn,
@@ -10,6 +10,8 @@ import {
   Min,
   ValidateNested,
 } from 'class-validator';
+
+import { NestApiQueryParameter } from '../../api';
 
 export interface IQueryEntityDto<
   TModel,
@@ -26,6 +28,18 @@ export function QueryEntityDto<
   include: readonly TInclude[] = [],
 ): Type<IQueryEntityDto<TModel, TInclude>> {
   class EntityQueryDtoClass implements IQueryEntityDto<TModel, TInclude> {
+    @NestApiQueryParameter({
+      options: {
+        style: 'form',
+        explode: false,
+        schema: {
+          type: 'array',
+          items: {
+            type: 'string',
+          },
+        },
+      },
+    })
     @IsOptional()
     @IsString({ each: true })
     @IsIn(include, { each: true })
@@ -120,24 +134,66 @@ export function QueryEntitiesDto<
   class EntitiesQueryDtoClass
     implements IQueryEntitiesDto<TModel, TFilter, TInclude>
   {
+    @NestApiQueryParameter({
+      type: filter,
+      options: {
+        style: 'deepObject',
+        schema: {
+          $ref: getSchemaPath(filter),
+        },
+      },
+    })
     @IsOptional()
     @IsObject()
     @ValidateNested()
     @TransformType(() => filter)
     public readonly filter: TFilter = {} as TFilter;
 
+    @NestApiQueryParameter({
+      options: {
+        style: 'form',
+        explode: false,
+        schema: {
+          type: 'array',
+          items: {
+            type: 'string',
+          },
+        },
+      },
+    })
     @IsOptional()
     @IsString({ each: true })
     @IsIn(sortOptions, { each: true })
     @Transform(({ value }) => (typeof value === 'string' ? [value] : value))
     public readonly sort: string[] = [];
 
+    @NestApiQueryParameter({
+      options: {
+        style: 'form',
+        explode: false,
+        schema: {
+          type: 'array',
+          items: {
+            type: 'string',
+          },
+        },
+      },
+    })
     @IsOptional()
     @IsString({ each: true })
     @IsIn(include, { each: true })
     @Transform(({ value }) => (typeof value === 'string' ? [value] : value))
     public readonly include: TInclude[] = [];
 
+    @NestApiQueryParameter({
+      type: PageDto,
+      options: {
+        style: 'deepObject',
+        schema: {
+          $ref: getSchemaPath(PageDto),
+        },
+      },
+    })
     @IsOptional()
     @ValidateNested()
     @TransformType(() => PageDto)
