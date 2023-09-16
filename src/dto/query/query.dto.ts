@@ -20,12 +20,17 @@ export interface IQueryEntityDto<
   readonly include: TInclude[];
 }
 
+// TODO: remove optional omitted elements from API
 export function QueryEntityDto<
   TModel,
   TInclude extends Extract<keyof TModel, string> = never,
 >(
   type: Type<TModel>,
-  include: readonly TInclude[] = [],
+  {
+    include,
+  }: {
+    include?: readonly TInclude[];
+  },
 ): Type<IQueryEntityDto<TModel, TInclude>> {
   class EntityQueryDtoClass implements IQueryEntityDto<TModel, TInclude> {
     @NestApiQueryParameter({
@@ -36,13 +41,14 @@ export function QueryEntityDto<
           type: 'array',
           items: {
             type: 'string',
+            enum: [...(include ?? [])],
           },
         },
       },
     })
     @IsOptional()
     @IsString({ each: true })
-    @IsIn(include, { each: true })
+    @IsIn(include ?? [], { each: true })
     @Transform(({ value }) => (typeof value === 'string' ? [value] : value))
     public readonly include: TInclude[] = [];
   }
@@ -118,6 +124,7 @@ export interface IQueryEntitiesDto<
   readonly page: PageDto;
 }
 
+// TODO: remove optional omitted elements from API
 export function QueryEntitiesDto<
   TModel,
   TFilter,
@@ -125,11 +132,17 @@ export function QueryEntitiesDto<
   TInclude extends Extract<keyof TModel, string> = never,
 >(
   type: Type<TModel>,
-  filter: Type<TFilter>,
-  sort: readonly SortDefinition<TModel, TSort>[] = [],
-  include: readonly TInclude[] = [],
+  {
+    filter,
+    sort,
+    include,
+  }: {
+    filter: Type<TFilter>;
+    sort?: readonly SortDefinition<TModel, TSort>[];
+    include?: readonly TInclude[];
+  },
 ): Type<IQueryEntitiesDto<TModel, TFilter, TInclude>> {
-  const sortOptions: string[] = parseSortDefinitions(sort);
+  const sortOptions: string[] = parseSortDefinitions(sort ?? []);
 
   class EntitiesQueryDtoClass
     implements IQueryEntitiesDto<TModel, TFilter, TInclude>
@@ -157,6 +170,7 @@ export function QueryEntitiesDto<
           type: 'array',
           items: {
             type: 'string',
+            enum: sortOptions,
           },
         },
       },
@@ -175,13 +189,14 @@ export function QueryEntitiesDto<
           type: 'array',
           items: {
             type: 'string',
+            enum: [...(include ?? [])],
           },
         },
       },
     })
     @IsOptional()
     @IsString({ each: true })
-    @IsIn(include, { each: true })
+    @IsIn(include ?? [], { each: true })
     @Transform(({ value }) => (typeof value === 'string' ? [value] : value))
     public readonly include: TInclude[] = [];
 
