@@ -11,21 +11,21 @@ import {
   ValidateNested,
 } from 'class-validator';
 
-export interface IEntityQueryDto<
+export interface IQueryEntityDto<
   TModel,
   TInclude extends Extract<keyof TModel, string>,
 > {
   readonly include: TInclude[];
 }
 
-export function EntityQueryDto<
+export function QueryEntityDto<
   TModel,
   TInclude extends Extract<keyof TModel, string> = never,
 >(
   type: Type<TModel>,
   include: readonly TInclude[] = [],
-): Type<IEntityQueryDto<TModel, TInclude>> {
-  class EntityQueryDtoClass implements IEntityQueryDto<TModel, TInclude> {
+): Type<IQueryEntityDto<TModel, TInclude>> {
+  class EntityQueryDtoClass implements IQueryEntityDto<TModel, TInclude> {
     @IsOptional()
     @IsString({ each: true })
     @IsIn(include, { each: true })
@@ -93,7 +93,7 @@ export class PageDto {
   public readonly limit: number = PageDto.DEFAULT_LIMIT;
 }
 
-export interface IEntitiesQueryDto<
+export interface IQueryEntitiesDto<
   TModel,
   TFilter,
   TInclude extends Extract<keyof TModel, string>,
@@ -104,7 +104,7 @@ export interface IEntitiesQueryDto<
   readonly page: PageDto;
 }
 
-export function EntitiesQueryDto<
+export function QueryEntitiesDto<
   TModel,
   TFilter,
   TSort extends Extract<keyof TModel, string> = never,
@@ -114,11 +114,11 @@ export function EntitiesQueryDto<
   filter: Type<TFilter>,
   sort: readonly SortDefinition<TModel, TSort>[] = [],
   include: readonly TInclude[] = [],
-): Type<IEntitiesQueryDto<TModel, TFilter, TInclude>> {
+): Type<IQueryEntitiesDto<TModel, TFilter, TInclude>> {
   const sortOptions: string[] = parseSortDefinitions(sort);
 
   class EntitiesQueryDtoClass
-    implements IEntitiesQueryDto<TModel, TFilter, TInclude>
+    implements IQueryEntitiesDto<TModel, TFilter, TInclude>
   {
     @IsOptional()
     @IsObject()

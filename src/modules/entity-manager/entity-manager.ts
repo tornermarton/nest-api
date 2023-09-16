@@ -14,7 +14,7 @@ import { map } from 'rxjs/operators';
 
 import { EntityManagerService } from './entity-manager.service';
 import { Entity, isNotNullOrUndefined } from '../../core';
-import { IEntitiesQueryDto, IEntityQueryDto } from '../../dto';
+import { IQueryEntitiesDto, IQueryEntityDto } from '../../dto';
 import {
   EntityCreateDto,
   EntityRepository,
@@ -142,7 +142,7 @@ export class EntityManager<
   }
 
   public find<TFilter, TInclude extends Extract<keyof TEntity, TRelationships>>(
-    query: IEntitiesQueryDto<TEntity, TFilter, TInclude>,
+    query: IQueryEntitiesDto<TEntity, TFilter, TInclude>,
     options?: { count: boolean },
   ): Observable<EntitiesResponse<TEntity>> {
     const entities$: Observable<{ entities: TEntity[]; included?: unknown[] }> =
@@ -184,7 +184,7 @@ export class EntityManager<
 
   public read<TInclude extends Extract<keyof TEntity, TRelationships>>(
     id: string,
-    query?: IEntityQueryDto<TEntity, TInclude>,
+    query?: IQueryEntityDto<TEntity, TInclude>,
   ): Observable<EntityResponse<TEntity | null>> {
     return this._entity.repository.read(id).pipe(
       concatMap((entity) => {
