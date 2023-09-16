@@ -72,15 +72,6 @@ export class MongooseEntityRepository<
     );
   }
 
-  public findByIds(ids: string[]): Observable<TEntity[]> {
-    return from(this._model.find({ id: ids }).exec()).pipe(
-      concatAll(),
-      map((entity) => entity.toObject()),
-      map((entity) => this.transform(entity)),
-      toArray(),
-    );
-  }
-
   public create(dto: EntityCreateDto<TEntity>): Observable<TEntity> {
     return from(new this._model(dto).save()).pipe(
       map((entity) => entity.toObject()),

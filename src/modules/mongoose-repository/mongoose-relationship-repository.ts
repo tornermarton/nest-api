@@ -184,6 +184,7 @@ export class MongooseRelationshipRepository<
       return of(void 0);
     }
   }
+
   public delete(id1: string, id2set?: string[]): Observable<void> {
     const filter = { id1 };
 
