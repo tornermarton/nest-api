@@ -361,7 +361,10 @@ export function NestApiEntityRequestDocument(type: Type): Type {
 
 export class NestApiEntityResponseDocumentLinks extends NestApiCommonDocumentLinks {}
 
-export function NestApiEntityResponseDocument(type: Type): Type {
+export function NestApiEntityResponseDocument(
+  type: Type,
+  options?: { nullable?: boolean },
+): Type {
   const name: string = type.name;
 
   class Resource extends NestApiResource(type) {}
@@ -374,8 +377,8 @@ export function NestApiEntityResponseDocument(type: Type): Type {
     .map((t) => ({ $ref: getSchemaPath(t) }));
 
   class Document extends NestApiCommonDocument {
-    @ApiProperty({ type: Resource })
-    public readonly data: Resource;
+    @ApiProperty({ type: Resource, nullable: options?.nullable })
+    public readonly data: Resource | null;
 
     @ApiProperty({ type: NestApiEntityResponseDocumentLinks })
     public readonly links: NestApiEntityResponseDocumentLinks;
@@ -423,20 +426,26 @@ export function NestApiEntitiesResponseDocument(type: Type): Type {
   return Document;
 }
 
-export function NestApiRelationshipRequestDocument(type: Type): Type {
+export function NestApiRelationshipRequestDocument(
+  type: Type,
+  options?: { nonNullable?: boolean },
+): Type {
   const name: string = type.name;
 
   class ResourceIdentifier extends NestApiResourceIdentifier(type) {}
   renameType(ResourceIdentifier, `${name}ResourceIdentifier`);
 
   class Document {
-    @ApiProperty({ type: ResourceIdentifier, nullable: true })
-    @IsOptional()
+    @ApiProperty({ type: ResourceIdentifier, nullable: !options?.nonNullable })
     @ValidateNested()
     @TransformType(() => ResourceIdentifier)
     public readonly data: ResourceIdentifier | null;
   }
   renameType(Document, `${name}RelationshipRequestDocument`);
+
+  if (!options?.nonNullable) {
+    IsOptional()(Document.prototype, 'data');
+  }
 
   return Document;
 }
@@ -446,14 +455,17 @@ export class NestApiRelationshipResponseDocumentLinks extends NestApiCommonDocum
   public readonly related: string;
 }
 
-export function NestApiRelationshipResponseDocument(type: Type): Type {
+export function NestApiRelationshipResponseDocument(
+  type: Type,
+  options?: { nonNullable?: boolean },
+): Type {
   const name: string = type.name;
 
   class ResourceIdentifier extends NestApiResourceIdentifier(type) {}
   renameType(ResourceIdentifier, `${name}ResourceIdentifier`);
 
   class Document extends NestApiCommonDocument {
-    @ApiProperty({ type: ResourceIdentifier, nullable: true })
+    @ApiProperty({ type: ResourceIdentifier, nullable: !options?.nonNullable })
     public readonly data: ResourceIdentifier | null;
 
     @ApiProperty({ type: NestApiRelationshipResponseDocumentLinks })

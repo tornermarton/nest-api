@@ -102,13 +102,16 @@ export const NestApiEntityRequestBody = <TModel extends Type>(
 
 export const NestApiRelationshipRequestBody = <TModel extends Type>(
   model: TModel,
+  options?: { nonNullable?: boolean },
 ): ParameterDecorator => {
   return (
     target: object,
     propertyKey: string | symbol,
     parameterIndex: number,
   ) => {
-    const document: Type = NestApiRelationshipRequestDocument(model);
+    const document: Type = NestApiRelationshipRequestDocument(model, {
+      nonNullable: options?.nonNullable,
+    });
 
     Body(
       new NestApiRequestBodyValidationPipe(document),
@@ -153,9 +156,11 @@ export const NestApiEntityRequest = <TModel extends Type>(
 
 export const NestApiRelationshipRequest = <TModel extends Type>(
   model: TModel,
-  options?: ApiBodyOptions,
+  options?: ApiBodyOptions & { nonNullable?: boolean },
 ): MethodDecorator => {
-  const document: Type = NestApiRelationshipRequestDocument(model);
+  const document: Type = NestApiRelationshipRequestDocument(model, {
+    nonNullable: options?.nonNullable,
+  });
 
   return applyDecorators(
     ApiExtraModels(document),

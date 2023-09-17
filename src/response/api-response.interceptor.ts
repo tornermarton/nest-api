@@ -20,6 +20,8 @@ import { map } from 'rxjs/operators';
 import {
   EntitiesResponse,
   EntityResponse,
+  RelatedEntitiesResponse,
+  RelatedEntityResponse,
   RelationshipResponse,
   RelationshipsResponse,
 } from './models';
@@ -173,7 +175,7 @@ export class ApiResponseInterceptor
 
   // eslint-disable-next-line @typescript-eslint/ban-types
   private transformEntity<T extends Function>(
-    entity: T | null | undefined,
+    entity?: T,
   ): NestApiResourceInterface | null {
     if (isNullOrUndefined(entity)) {
       return null;
@@ -232,7 +234,7 @@ export class ApiResponseInterceptor
 
   private transformRelationship<T>(
     type: Type<T>,
-    data: string | null | undefined,
+    data?: string,
   ): NestApiResourceIdentifierInterface | null {
     if (isNullOrUndefined(data)) {
       return null;
@@ -282,10 +284,15 @@ export class ApiResponseInterceptor
             | void
             | EntityResponse<T>
             | EntitiesResponse<T>
+            | RelatedEntityResponse<T>
+            | RelatedEntitiesResponse<T>
             | RelationshipResponse<T>
             | RelationshipsResponse<T>,
         ) => {
-          if (r instanceof EntityResponse) {
+          if (
+            r instanceof EntityResponse ||
+            r instanceof RelatedEntityResponse
+          ) {
             return {
               meta: meta,
               data: this.transformEntity(r.data),
@@ -295,7 +302,10 @@ export class ApiResponseInterceptor
                 this.transformEntity(e as Function),
               ),
             };
-          } else if (r instanceof EntitiesResponse) {
+          } else if (
+            r instanceof EntitiesResponse ||
+            r instanceof RelatedEntitiesResponse
+          ) {
             return {
               meta: meta,
               data: r.data.map((e) => this.transformEntity(e)),

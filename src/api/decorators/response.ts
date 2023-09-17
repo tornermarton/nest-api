@@ -22,9 +22,11 @@ import {
 
 export const NestApiEntityResponse = <TModel extends Type>(
   model: TModel,
-  options?: ApiResponseOptions,
+  options?: ApiResponseOptions & { nullable?: boolean },
 ): MethodDecorator => {
-  const document: Type = NestApiEntityResponseDocument(model);
+  const document: Type = NestApiEntityResponseDocument(model, {
+    nullable: options?.nullable,
+  });
 
   return applyDecorators(
     ApiExtraModels(document),
@@ -52,11 +54,47 @@ export const NestApiEntitiesResponse = <TModel extends Type>(
   );
 };
 
-export const NestApiRelationshipResponse = <TModel extends Type>(
+export const NestApiRelatedEntityResponse = <TModel extends Type>(
+  model: TModel,
+  options?: ApiResponseOptions & { nonNullable?: boolean },
+): MethodDecorator => {
+  const document: Type = NestApiEntityResponseDocument(model, {
+    nullable: !options?.nonNullable,
+  });
+
+  return applyDecorators(
+    ApiExtraModels(document),
+    ApiResponse({
+      status: 200,
+      type: document,
+      ...options,
+    }),
+  );
+};
+
+export const NestApiRelatedEntitiesResponse = <TModel extends Type>(
   model: TModel,
   options?: ApiResponseOptions,
 ): MethodDecorator => {
-  const document: Type = NestApiRelationshipResponseDocument(model);
+  const document: Type = NestApiEntitiesResponseDocument(model);
+
+  return applyDecorators(
+    ApiExtraModels(document),
+    ApiResponse({
+      status: 200,
+      type: document,
+      ...options,
+    }),
+  );
+};
+
+export const NestApiRelationshipResponse = <TModel extends Type>(
+  model: TModel,
+  options?: ApiResponseOptions & { nonNullable?: boolean },
+): MethodDecorator => {
+  const document: Type = NestApiRelationshipResponseDocument(model, {
+    nonNullable: options?.nonNullable,
+  });
 
   return applyDecorators(
     ApiExtraModels(document),

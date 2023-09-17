@@ -25,6 +25,8 @@ import {
 import {
   EntitiesResponse,
   EntityResponse,
+  RelatedEntitiesResponse,
+  RelatedEntityResponse,
   RelationshipResponse,
   RelationshipsResponse,
 } from '../../response';
@@ -46,9 +48,11 @@ type TypedRelationshipResponse<T> = [T] extends [Array<unknown>]
   ? RelationshipsResponse
   : RelationshipResponse;
 
-type TypedRelatedResponse<T, V> = [T] extends [Array<unknown>]
-  ? EntitiesResponse<V>
-  : EntityResponse<V | null>;
+type TypedRelatedEntitiesResponse<T, V, N> = [T] extends [Array<unknown>]
+  ? RelatedEntitiesResponse<V>
+  : [N] extends [true]
+  ? RelatedEntityResponse<V>
+  : RelatedEntityResponse<V | undefined>;
 
 export class EntityManager<
   TEntity extends Entity,
@@ -98,13 +102,13 @@ export class EntityManager<
               relationships: {
                 [key]: Array.isArray(data)
                   ? data.map(({ id }) => id)
-                  : data !== null
+                  : isNotNullOrUndefined(data)
                   ? data.id
                   : undefined,
               },
               included: Array.isArray(data)
                 ? data
-                : data !== null
+                : isNotNullOrUndefined(data)
                 ? [data]
                 : [],
             })),
@@ -230,11 +234,17 @@ export class EntityManager<
     return this._entity.repository.delete(id);
   }
 
-  public findRelated<TRelated extends Entity, TKey extends TRelationships>(
+  public findRelated<
+    TRelated extends Entity,
+    TKey extends TRelationships,
+    TNonNullable extends boolean = false,
+  >(
     key: TKey,
     id1: string,
     options?: { count: boolean },
-  ): Observable<TypedRelatedResponse<TEntity[TKey], TRelated>> {
+  ): Observable<
+    TypedRelatedEntitiesResponse<TEntity[TKey], TRelated, TNonNullable>
+  > {
     const definition = this._relationships[
       key
     ] as EntityManagerRelationshipDefinition<TRelated>;
@@ -258,12 +268,19 @@ export class EntityManager<
         if (kind === 'toOne') {
           const entity = entities.length > 0 ? entities[0] : undefined;
 
-          return new EntityResponse(entity);
+          return new RelatedEntityResponse(entity);
         } else {
-          return new EntitiesResponse(entities, undefined, total);
+          return new RelatedEntitiesResponse(entities, undefined, total);
         }
       }),
-      map((r) => r as TypedRelatedResponse<TEntity[TKey], TRelated>),
+      map(
+        (r) =>
+          r as TypedRelatedEntitiesResponse<
+            TEntity[TKey],
+            TRelated,
+            TNonNullable
+          >,
+      ),
     );
   }
 

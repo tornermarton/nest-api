@@ -12,6 +12,18 @@ export class EntitiesResponse<T = unknown> {
   ) {}
 }
 
+export class RelatedEntityResponse<T = unknown> {
+  constructor(public readonly data: T, public readonly included?: unknown[]) {}
+}
+
+export class RelatedEntitiesResponse<T = unknown> {
+  constructor(
+    public readonly data: T[],
+    public readonly included?: unknown[],
+    public readonly total?: number,
+  ) {}
+}
+
 export class RelationshipResponse<T = unknown> {
   constructor(public readonly type: Type<T>, public readonly data?: string) {}
 }

@@ -24,7 +24,7 @@ import {
   NestApiErrorDocumentInterface,
   NestApiErrorInterface,
   NestApiGenericErrorInterface,
-} from '../api/interfaces';
+} from '../api';
 import { isNotNullOrUndefined } from '../core';
 
 type ApiResponseExceptionFilterOptions = {
