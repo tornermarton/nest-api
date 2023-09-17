@@ -20,5 +20,11 @@ export abstract class RelationshipRepository<TRelated extends Entity = Entity> {
     createdBy: string,
   ): Observable<Relationship[]>;
 
+  public abstract update(
+    id1: string,
+    id2set: string[],
+    createdBy: string,
+  ): Observable<Relationship[]>;
+
   public abstract delete(id1: string, id2set?: string[]): Observable<void>;
 }

@@ -173,8 +173,12 @@ export class ApiResponseInterceptor
 
   // eslint-disable-next-line @typescript-eslint/ban-types
   private transformEntity<T extends Function>(
-    entity: T,
-  ): NestApiResourceInterface {
+    entity: T | null | undefined,
+  ): NestApiResourceInterface | null {
+    if (isNullOrUndefined(entity)) {
+      return null;
+    }
+
     const metadata: NestApiEntityMetadata = getEntityMetadata(entity);
 
     if (isNullOrUndefined(metadata.fields.id)) {
@@ -228,15 +232,15 @@ export class ApiResponseInterceptor
 
   private transformRelationship<T>(
     type: Type<T>,
-    data?: string,
+    data: string | null | undefined,
   ): NestApiResourceIdentifierInterface | null {
-    if (isNotNullOrUndefined(data)) {
-      const metadata: NestApiEntityMetadata = getEntityMetadata(type.prototype);
-
-      return { id: data, type: metadata.type };
-    } else {
+    if (isNullOrUndefined(data)) {
       return null;
     }
+
+    const metadata: NestApiEntityMetadata = getEntityMetadata(type.prototype);
+
+    return { id: data, type: metadata.type };
   }
 
   public intercept(

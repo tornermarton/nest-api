@@ -73,7 +73,7 @@ export type NestApiEntityResponseDocumentLinksInterface =
 
 export type NestApiEntityResponseDocumentInterface =
   NestApiCommonDocumentInterface & {
-    readonly data: NestApiResourceInterface;
+    readonly data: NestApiResourceInterface | null;
     readonly links: NestApiEntityResponseDocumentLinksInterface;
     readonly included?: unknown[];
   };

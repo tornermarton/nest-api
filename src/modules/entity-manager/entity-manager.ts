@@ -82,7 +82,15 @@ export class EntityManager<
     entity: TEntity,
     include: TInclude[] = [],
   ): Observable<{ entity: Record<string, unknown>; included: unknown[] }> {
-    return from(Object.keys(this._relationships) as TRelationships[]).pipe(
+    const relationships: TRelationships[] = Object.keys(
+      this._relationships,
+    ) as TRelationships[];
+
+    if (relationships.length < 1) {
+      return of({ entity: entity as Record<string, unknown>, included: [] });
+    }
+
+    return from(relationships).pipe(
       map((key) => {
         if (include.includes(key as TInclude)) {
           return this.findRelated(key, entity.id).pipe(
@@ -317,10 +325,36 @@ export class EntityManager<
     );
   }
 
-  public deleteRelationship<TKey extends TRelationships>(
+  public updateRelationship<TKey extends TRelationships>(
     key: TKey,
     id1: string,
     id2set: TypedId2Set<TEntity[TKey]>,
+    createdBy: string,
+  ): Observable<TypedRelationshipResponse<TEntity[TKey]>> {
+    const { descriptor, repository } = this._relationships[key];
+    const { kind, related } = descriptor;
+
+    return repository.update(id1, id2set, createdBy).pipe(
+      concatAll(),
+      map(({ id2 }) => id2),
+      toArray(),
+      map((ids) => {
+        if (kind === 'toOne') {
+          const id = ids.length > 0 ? ids[0] : undefined;
+
+          return new RelationshipResponse(related(), id);
+        } else {
+          return new RelationshipsResponse(related(), ids);
+        }
+      }),
+      map((r) => r as TypedRelationshipResponse<TEntity[TKey]>),
+    );
+  }
+
+  public deleteRelationship<TKey extends TRelationships>(
+    key: TKey,
+    id1: string,
+    id2set?: TypedId2Set<TEntity[TKey]>,
   ): Observable<void> {
     const { repository } = this._relationships[key];
 
