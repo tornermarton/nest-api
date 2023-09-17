@@ -86,7 +86,7 @@ export function setEntityFieldsMetadata(
 export function getInverseRelationshipDescriptor<TRelated extends Entity>({
   related,
   inverse,
-}: RelationshipDescriptor<TRelated>): RelationshipDescriptor | null {
+}: RelationshipDescriptor<TRelated>): RelationshipDescriptor<any> | null {
   if (isNullOrUndefined(inverse)) {
     return null;
   }
@@ -105,7 +105,7 @@ export function getInverseRelationshipDescriptor<TRelated extends Entity>({
 
 export function getRelationshipDescriptors<TEntity extends Entity>(
   type: Type<TEntity>,
-): RelationshipDescriptor[] {
+): RelationshipDescriptor<any>[] {
   const metadata: NestApiEntityMetadata = getEntityMetadata(type.prototype);
   const { relationships } = metadata.fields;
   const descriptors = relationships.map(({ descriptor }) => descriptor);
@@ -114,6 +114,22 @@ export function getRelationshipDescriptors<TEntity extends Entity>(
     .filter(isNotNullOrUndefined);
 
   return [...descriptors, ...inverseDescriptors];
+}
+
+export function getRelationshipDescriptorByKey<
+  TEntity extends Entity,
+  TKey extends Extract<keyof TEntity, string>,
+>(type: Type<TEntity>, key: TKey): RelationshipDescriptor<any> {
+  const metadata: NestApiEntityMetadata = getEntityMetadata(type.prototype);
+
+  const descriptor: RelationshipDescriptor<any> | undefined =
+    metadata.fields.relationships.find(({ name }) => name === key)?.descriptor;
+
+  if (isNullOrUndefined(descriptor)) {
+    throw new Error(`Could not find relationship [${key}] in [${type.name}]`);
+  }
+
+  return descriptor;
 }
 
 // eslint-disable-next-line @typescript-eslint/ban-types

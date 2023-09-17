@@ -159,7 +159,7 @@ export class MongooseRepositoryModule {
           descriptor: RelationshipDescriptor<TRelated>,
         ): FactoryProvider => {
           const { name, related } = descriptor;
-          const inverseDescriptor: RelationshipDescriptor | null =
+          const inverseDescriptor: RelationshipDescriptor<any> | null =
             getInverseRelationshipDescriptor(descriptor);
 
           const provide: string = getRelationshipRepositoryToken(name);

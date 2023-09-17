@@ -10,7 +10,8 @@ import { ApiBody, ApiBodyOptions, ApiExtraModels } from '@nestjs/swagger';
 import { ParameterObject } from '@nestjs/swagger/dist/interfaces/open-api-spec.interface';
 import { Request } from 'express';
 
-import { isNotNullOrUndefined } from '../../core';
+import { Entity, isNotNullOrUndefined } from '../../core';
+import { RelationshipDescriptor } from '../../repository';
 import {
   NestApiEntityRequestBodyTransformationPipe,
   NestApiRelationshipRequestBodyTransformationPipe,
@@ -21,7 +22,11 @@ import {
   NestApiRequestQueryValidationPipe,
 } from '../../request';
 import { SWAGGER_API_PARAMETERS_METADATA_KEY } from '../constants';
-import { getQueryMetadata, NestApiQueryMetadata } from '../metadata';
+import {
+  getQueryMetadata,
+  getRelationshipDescriptorByKey,
+  NestApiQueryMetadata,
+} from '../metadata';
 import {
   NestApiEntityRequestDocument,
   NestApiRelationshipRequestDocument,
@@ -100,17 +105,27 @@ export const NestApiEntityRequestBody = <TModel extends Type>(
   };
 };
 
-export const NestApiRelationshipRequestBody = <TModel extends Type>(
-  model: TModel,
-  options?: { nonNullable?: boolean },
+export const NestApiRelationshipRequestBody = <
+  TEntity extends Entity,
+  TKey extends Extract<keyof TEntity, string>,
+>(
+  model: Type<TEntity>,
+  key: TKey,
 ): ParameterDecorator => {
   return (
     target: object,
     propertyKey: string | symbol,
     parameterIndex: number,
   ) => {
-    const document: Type = NestApiRelationshipRequestDocument(model, {
-      nonNullable: options?.nonNullable,
+    const descriptor: RelationshipDescriptor<any> =
+      getRelationshipDescriptorByKey(model, key);
+
+    const type: Type = descriptor.related();
+    const nonNullable: boolean =
+      descriptor.kind === 'toOne' ? !!descriptor.nonNullable : false;
+
+    const document: Type = NestApiRelationshipRequestDocument(type, {
+      nonNullable,
     });
 
     Body(
@@ -121,15 +136,21 @@ export const NestApiRelationshipRequestBody = <TModel extends Type>(
   };
 };
 
-export const NestApiRelationshipsRequestBody = <TModel extends Type>(
-  model: TModel,
+export const NestApiRelationshipsRequestBody = <
+  TEntity extends Entity,
+  TKey extends Extract<keyof TEntity, string>,
+>(
+  model: Type<TEntity>,
+  key: TKey,
 ): ParameterDecorator => {
   return (
     target: object,
     propertyKey: string | symbol,
     parameterIndex: number,
   ) => {
-    const document: Type = NestApiRelationshipsRequestDocument(model);
+    const { related } = getRelationshipDescriptorByKey(model, key);
+
+    const document: Type = NestApiRelationshipsRequestDocument(related());
 
     Body(
       new NestApiRequestBodyValidationPipe(document),
@@ -154,12 +175,23 @@ export const NestApiEntityRequest = <TModel extends Type>(
   );
 };
 
-export const NestApiRelationshipRequest = <TModel extends Type>(
-  model: TModel,
-  options?: ApiBodyOptions & { nonNullable?: boolean },
+export const NestApiRelationshipRequest = <
+  TEntity extends Entity,
+  TKey extends Extract<keyof TEntity, string>,
+>(
+  model: Type<TEntity>,
+  key: TKey,
+  options?: ApiBodyOptions,
 ): MethodDecorator => {
-  const document: Type = NestApiRelationshipRequestDocument(model, {
-    nonNullable: options?.nonNullable,
+  const descriptor: RelationshipDescriptor<any> =
+    getRelationshipDescriptorByKey(model, key);
+
+  const type: Type = descriptor.related();
+  const nonNullable: boolean =
+    descriptor.kind === 'toOne' ? !!descriptor.nonNullable : false;
+
+  const document: Type = NestApiRelationshipRequestDocument(type, {
+    nonNullable,
   });
 
   return applyDecorators(
@@ -171,11 +203,17 @@ export const NestApiRelationshipRequest = <TModel extends Type>(
   );
 };
 
-export const NestApiRelationshipsRequest = <TModel extends Type>(
-  model: TModel,
+export const NestApiRelationshipsRequest = <
+  TEntity extends Entity,
+  TKey extends Extract<keyof TEntity, string>,
+>(
+  model: Type<TEntity>,
+  key: TKey,
   options?: ApiBodyOptions,
 ): MethodDecorator => {
-  const document: Type = NestApiRelationshipsRequestDocument(model);
+  const { related } = getRelationshipDescriptorByKey(model, key);
+
+  const document: Type = NestApiRelationshipsRequestDocument(related());
 
   return applyDecorators(
     ApiExtraModels(document),
