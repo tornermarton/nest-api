@@ -48,11 +48,11 @@ type TypedRelationshipResponse<T> = [T] extends [Array<unknown>]
   ? RelationshipsResponse
   : RelationshipResponse;
 
-type TypedRelatedEntitiesResponse<T, V, N> = [T] extends [Array<unknown>]
+type TypedRelatedEntitiesResponse<T, V> = [T] extends [Array<unknown>]
   ? RelatedEntitiesResponse<V>
-  : [N] extends [true]
-  ? RelatedEntityResponse<V>
-  : RelatedEntityResponse<V | undefined>;
+  : null extends T
+  ? RelatedEntityResponse<V | undefined>
+  : RelatedEntityResponse<V>;
 
 export class EntityManager<
   TEntity extends Entity,
@@ -294,17 +294,11 @@ export class EntityManager<
     return this._entity.repository.delete(id);
   }
 
-  public findRelated<
-    TRelated extends Entity,
-    TKey extends TRelationships,
-    TNonNullable extends boolean = false,
-  >(
+  public findRelated<TRelated extends Entity, TKey extends TRelationships>(
     key: TKey,
     id1: string,
     options?: { count: boolean },
-  ): Observable<
-    TypedRelatedEntitiesResponse<TEntity[TKey], TRelated, TNonNullable>
-  > {
+  ): Observable<TypedRelatedEntitiesResponse<TEntity[TKey], TRelated>> {
     const definition = this._relationships[
       key
     ] as EntityManagerRelationshipDefinition<TRelated>;
@@ -333,14 +327,7 @@ export class EntityManager<
           return new RelatedEntitiesResponse(entities, undefined, total);
         }
       }),
-      map(
-        (r) =>
-          r as TypedRelatedEntitiesResponse<
-            TEntity[TKey],
-            TRelated,
-            TNonNullable
-          >,
-      ),
+      map((r) => r as TypedRelatedEntitiesResponse<TEntity[TKey], TRelated>),
     );
   }
 
