@@ -21,8 +21,21 @@ export class EntityManagerModule {
     entities,
     repositoryModule,
   }: EntityManagerModuleOptions): DynamicModule {
-    // TODO: deduplicate array
-    const relationships: RelationshipDescriptor<any>[] = entities
+    // TODO: optimize this next part since it is very wasteful with doble traversal of first map values
+    const entitiesMap: Map<string, Type> = new Map<string, Type>();
+
+    entities.forEach((type) => {
+      if (!entitiesMap.has(type.name)) {
+        entitiesMap.set(type.name, type);
+      }
+    });
+
+    const relationshipsMap: Map<string, RelationshipDescriptor<any>> = new Map<
+      string,
+      RelationshipDescriptor<any>
+    >();
+
+    Array.from(entitiesMap.values())
       .map((type) => getEntityMetadata(type.prototype))
       .map(({ fields }) => fields.relationships)
       .flat()
@@ -35,33 +48,47 @@ export class EntityManagerModule {
           return [descriptor];
         }
       })
-      .flat();
+      .flat()
+      .forEach((descriptor) => {
+        if (!relationshipsMap.has(descriptor.name)) {
+          relationshipsMap.set(descriptor.name, descriptor);
+        }
+      });
 
-    // TODO: deduplicate array
-    const relatedEntities: Type[] = relationships.map(({ related }) =>
-      related(),
+    Array.from(relationshipsMap.values())
+      .map(({ related }) => related())
+      .forEach((type) => {
+        if (!entitiesMap.has(type.name)) {
+          entitiesMap.set(type.name, type);
+        }
+      });
+
+    Array.from(entitiesMap.values())
+      .map((type) => getEntityMetadata(type.prototype))
+      .map(({ fields }) => fields.relationships)
+      .flat()
+      .map(({ descriptor }) => {
+        const inverseDescriptor = getInverseRelationshipDescriptor(descriptor);
+
+        if (isNotNullOrUndefined(inverseDescriptor)) {
+          return [descriptor, inverseDescriptor];
+        } else {
+          return [descriptor];
+        }
+      })
+      .flat()
+      .forEach((descriptor) => {
+        if (!relationshipsMap.has(descriptor.name)) {
+          relationshipsMap.set(descriptor.name, descriptor);
+        }
+      });
+
+    // TODO: rename this instead of reassignment
+    entities = Array.from(entitiesMap.values());
+
+    const relationships: RelationshipDescriptor<any>[] = Array.from(
+      relationshipsMap.values(),
     );
-
-    // TODO: deduplicate array
-    const relatedRelationships: RelationshipDescriptor<any>[] = relatedEntities
-      .map((type) => getEntityMetadata(type.prototype))
-      .map(({ fields }) => fields.relationships)
-      .flat()
-      .map(({ descriptor }) => {
-        const inverseDescriptor = getInverseRelationshipDescriptor(descriptor);
-
-        if (isNotNullOrUndefined(inverseDescriptor)) {
-          return [descriptor, inverseDescriptor];
-        } else {
-          return [descriptor];
-        }
-      })
-      .flat();
-
-    // TODO: deduplicate array
-    entities.push(...relatedEntities);
-    // TODO: deduplicate array
-    relationships.push(...relatedRelationships);
 
     const entityTokens: string[] = entities.map((type) =>
       getEntityRepositoryToken(type),
