@@ -158,7 +158,7 @@ export class MongooseRepositoryModule {
         <TRelated extends Entity>(
           descriptor: RelationshipDescriptor<TRelated>,
         ): FactoryProvider => {
-          const { name, related } = descriptor;
+          const { name } = descriptor;
           const inverseDescriptor: RelationshipDescriptor<any> | null =
             getInverseRelationshipDescriptor(descriptor);
 
@@ -176,13 +176,21 @@ export class MongooseRepositoryModule {
               connection: Connection,
               model: Model<MongooseRelationship>,
               inverseModel?: Model<MongooseRelationship>,
-            ): MongooseRelationshipRepository<TRelated> =>
-              new MongooseRelationshipRepository(
+            ): MongooseRelationshipRepository<TRelated> => {
+              const definition = { descriptor, model };
+
+              const inverseDefinition =
+                isNotNullOrUndefined(inverseDescriptor) &&
+                isNotNullOrUndefined(inverseModel)
+                  ? { descriptor: inverseDescriptor, model: inverseModel }
+                  : undefined;
+
+              return new MongooseRelationshipRepository(
                 connection,
-                related(),
-                model,
-                inverseModel,
-              ),
+                definition,
+                inverseDefinition,
+              );
+            },
             inject: inject,
           };
         },

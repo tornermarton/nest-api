@@ -41,7 +41,6 @@ export type EntityManagerRelationshipDefinition<TRelated extends Entity> = {
   repository: RelationshipRepository<TRelated>;
 };
 
-// TODO: maybe move this logic to relationship repo?
 type TypedId2Set<T> = [T] extends [Array<unknown>] ? string[] : [string];
 
 type TypedRelationshipResponse<T> = [T] extends [Array<unknown>]
