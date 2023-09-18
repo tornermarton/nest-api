@@ -87,14 +87,14 @@ export function NestApiAttributeField(
 
 export function NestApiRelationshipField<TRelated extends Entity>(
   descriptor: RelationshipDescriptor<TRelated>,
-  options?: ApiPropertyOptions,
+  options?: Omit<ApiPropertyOptions, 'required'>,
 ): PropertyDecorator {
   // eslint-disable-next-line @typescript-eslint/ban-types
   return (target: Object, propertyKey: string | symbol): void => {
     Expose()(target, propertyKey);
 
     const openapi: ApiPropertyOptions = options ?? {};
-    openapi.required = openapi.required ?? true;
+    openapi.required = true;
 
     const fieldsMetadata: Partial<NestApiEntityFieldsMetadata> =
       getEntityFieldsMetadata(target);

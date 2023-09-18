@@ -106,7 +106,7 @@ export class NestApiResourceRelationshipToOneLinks extends NestApiCommonResource
 
 export function NestApiResourceRelationshipToOne(
   type: Type,
-  options?: { omitLinks?: boolean },
+  options?: { nonNullable?: boolean; omitLinks?: boolean },
 ): Type {
   const { name } = type;
   const resourceTypes: Type[] = [];
@@ -115,14 +115,18 @@ export function NestApiResourceRelationshipToOne(
   renameType(ResourceIdentifier, `${name}ResourceIdentifier`);
 
   class RelationshipToOneData {
-    @ApiProperty({ type: ResourceIdentifier, nullable: true })
-    @NotEquals(undefined)
-    @IsOptional()
+    @ApiProperty({ type: ResourceIdentifier, nullable: !options?.nonNullable })
     @ValidateNested()
     @TransformType(() => ResourceIdentifier)
     public readonly data: ResourceIdentifier | null;
   }
   resourceTypes.push(RelationshipToOneData);
+
+  if (!options?.nonNullable) {
+    IsDefined()(RelationshipToOneData.prototype, 'data');
+  } else {
+    NotEquals(undefined)(RelationshipToOneData.prototype, 'data');
+  }
 
   if (!options?.omitLinks) {
     class RelationshipToOneLinks {
@@ -444,7 +448,9 @@ export function NestApiRelationshipRequestDocument(
   renameType(Document, `${name}RelationshipRequestDocument`);
 
   if (!options?.nonNullable) {
-    IsOptional()(Document.prototype, 'data');
+    IsDefined()(Document.prototype, 'data');
+  } else {
+    NotEquals(undefined)(Document.prototype, 'data');
   }
 
   return Document;

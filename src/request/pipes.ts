@@ -68,7 +68,23 @@ export class NestApiEntityRequestBodyTransformationPipe<T>
 
   public transform(value: NestApiResourceInterface): T {
     const attributes: Record<string, unknown> = value.attributes ?? {};
-    const relationships: Record<string, unknown> = value.relationships ?? {};
+
+    const relationships: Record<string, unknown> = Object.entries(
+      value.relationships ?? {},
+    ).reduce((acc, [key, relationship]) => {
+      if (Array.isArray(relationship.data)) {
+        return {
+          ...acc,
+          [key]: relationship.data.map(({ id }) => id),
+        };
+      } else {
+        return {
+          ...acc,
+          [key]: relationship.data?.id ?? null,
+        };
+      }
+    }, {});
+
     const meta: Record<string, unknown> = value.meta ?? {};
 
     const plain: Record<string, unknown> = {

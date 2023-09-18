@@ -1,5 +1,6 @@
 import { Type } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
+import { omit } from 'lodash';
 import {
   concatAll,
   concatMap,
@@ -13,7 +14,7 @@ import {
 import { map } from 'rxjs/operators';
 
 import { EntityManagerService } from './entity-manager.service';
-import { Entity, isNotNullOrUndefined } from '../../core';
+import { Entity, isNotNullOrUndefined, isNullOrUndefined } from '../../core';
 import { IQueryEntitiesDto, IQueryEntityDto } from '../../dto';
 import {
   EntityCreateDto,
@@ -79,21 +80,23 @@ export class EntityManager<
     this._relationships = relationships ?? {};
   }
 
+  private getRelationshipKeys(): TRelationships[] {
+    return Object.keys(this._relationships) as TRelationships[];
+  }
+
   private populateRelationships<
     TInclude extends Extract<keyof TEntity, TRelationships>,
   >(
     entity: TEntity,
     include: TInclude[] = [],
   ): Observable<{ entity: Record<string, unknown>; included: unknown[] }> {
-    const relationships: TRelationships[] = Object.keys(
-      this._relationships,
-    ) as TRelationships[];
+    const relationshipKeys: TRelationships[] = this.getRelationshipKeys();
 
-    if (relationships.length < 1) {
+    if (relationshipKeys.length < 1) {
       return of({ entity: entity as Record<string, unknown>, included: [] });
     }
 
-    return from(relationships).pipe(
+    return from(relationshipKeys).pipe(
       map((key) => {
         if (include.includes(key as TInclude)) {
           return this.findRelated(key, entity.id).pipe(
@@ -187,10 +190,37 @@ export class EntityManager<
   public create(
     dto: EntityCreateDto<TEntity>,
   ): Observable<EntityResponse<TEntity>> {
-    return this._entity.repository.create(dto).pipe(
-      concatMap((entity) => this.transform(entity)),
-      map(({ entity }) => new EntityResponse(entity)),
-    );
+    const relationshipKeys: TRelationships[] = this.getRelationshipKeys();
+
+    // TODO: correct typing
+    return this._entity.repository
+      .create(omit(dto, ...relationshipKeys) as EntityCreateDto<TEntity>)
+      .pipe(
+        concatMap((entity) => {
+          const observables$: Observable<unknown>[] = relationshipKeys.map(
+            <TKey extends TRelationships>(key: TKey) => {
+              // TODO: correct typing
+              const id2set = dto[key as any] as TypedId2Set<TEntity[TKey]>;
+
+              if (isNullOrUndefined(id2set)) {
+                return of([]);
+              }
+
+              return this.updateRelationship(
+                key,
+                entity.id,
+
+                Array.isArray(id2set) ? id2set : [id2set],
+                entity.createdBy,
+              );
+            },
+          );
+
+          return forkJoin(observables$).pipe(map(() => entity));
+        }),
+        concatMap((entity) => this.transform(entity)),
+        map(({ entity }) => new EntityResponse(entity)),
+      );
   }
 
   public read<TInclude extends Extract<keyof TEntity, TRelationships>>(
@@ -199,11 +229,11 @@ export class EntityManager<
   ): Observable<EntityResponse<TEntity | null>> {
     return this._entity.repository.read(id).pipe(
       concatMap((entity) => {
-        if (isNotNullOrUndefined(entity)) {
-          return this.transform(entity, query?.include);
-        } else {
+        if (isNullOrUndefined(entity)) {
           return of({ entity, included: undefined });
         }
+
+        return this.transform(entity, query?.include);
       }),
       map(({ entity, included }) => ({
         entity,
@@ -217,16 +247,47 @@ export class EntityManager<
     id: string,
     dto: EntityUpdateDto<TEntity>,
   ): Observable<EntityResponse<TEntity | null>> {
-    return this._entity.repository.update(id, dto).pipe(
-      concatMap((entity) => {
-        if (isNotNullOrUndefined(entity)) {
+    const relationshipKeys: TRelationships[] = this.getRelationshipKeys();
+
+    // TODO: correct typing
+    return this._entity.repository
+      .update(id, omit(dto, ...relationshipKeys) as EntityUpdateDto<TEntity>)
+      .pipe(
+        concatMap((entity) => {
+          if (isNullOrUndefined(entity)) {
+            return of(entity);
+          }
+
+          const observables$: Observable<unknown>[] = relationshipKeys.map(
+            <TKey extends TRelationships>(key: TKey) => {
+              // TODO: correct typing
+              const id2set = dto[key as any] as TypedId2Set<TEntity[TKey]>;
+
+              if (isNullOrUndefined(id2set)) {
+                return of([]);
+              }
+
+              return this.updateRelationship(
+                key,
+                entity.id,
+
+                Array.isArray(id2set) ? id2set : [id2set],
+                entity.createdBy,
+              );
+            },
+          );
+
+          return forkJoin(observables$).pipe(map(() => entity));
+        }),
+        concatMap((entity) => {
+          if (isNullOrUndefined(entity)) {
+            return of(entity);
+          }
+
           return this.transform(entity).pipe(map(({ entity }) => entity));
-        } else {
-          return of(entity);
-        }
-      }),
-      map((entity) => new EntityResponse(entity)),
-    );
+        }),
+        map((entity) => new EntityResponse(entity)),
+      );
   }
 
   public delete(id: string): Observable<void> {
