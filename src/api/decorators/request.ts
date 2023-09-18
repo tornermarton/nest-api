@@ -47,9 +47,7 @@ const SilentQuery = createParamDecorator(
   },
 );
 
-export const NestApiRequestQuery = <TModel extends Type>(
-  model: TModel,
-): ParameterDecorator => {
+export const NestApiRequestQuery = (): ParameterDecorator => {
   return (
     target: object,
     propertyKey: string | symbol,
@@ -63,6 +61,11 @@ export const NestApiRequestQuery = <TModel extends Type>(
         SWAGGER_API_PARAMETERS_METADATA_KEY,
         descriptor?.value,
       ) ?? [];
+
+    const key: string = 'design:paramtypes';
+    // TODO: fix typing
+    const paramMetadata: any = Reflect.getMetadata(key, target, propertyKey);
+    const model: Type = paramMetadata[parameterIndex];
 
     const metadata: NestApiQueryMetadata = getQueryMetadata(model.prototype);
     const metadataParameters: ParameterObject[] = metadata.parameters.map(
@@ -87,14 +90,16 @@ export const NestApiRequestQuery = <TModel extends Type>(
   };
 };
 
-export const NestApiEntityRequestBody = <TModel extends Type>(
-  model: TModel,
-): ParameterDecorator => {
+export const NestApiEntityRequestBody = (): ParameterDecorator => {
   return (
     target: object,
     propertyKey: string | symbol,
     parameterIndex: number,
   ) => {
+    const key: string = 'design:paramtypes';
+    // TODO: fix typing
+    const paramMetadata: any = Reflect.getMetadata(key, target, propertyKey);
+    const model: Type = paramMetadata[parameterIndex];
     const document: Type = NestApiEntityRequestDocument(model);
 
     Body(
