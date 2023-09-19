@@ -6,11 +6,15 @@ import {
   Param,
   Type,
 } from '@nestjs/common';
-import { ApiBody, ApiBodyOptions, ApiExtraModels } from '@nestjs/swagger';
-import { ParameterObject } from '@nestjs/swagger/dist/interfaces/open-api-spec.interface';
+import {
+  ApiBody,
+  ApiBodyOptions,
+  ApiExtraModels,
+  ApiQuery,
+} from '@nestjs/swagger';
 import { Request } from 'express';
 
-import { Entity, isNotNullOrUndefined } from '../../core';
+import { Entity, isNotNullOrUndefined, isNullOrUndefined } from '../../core';
 import { RelationshipDescriptor } from '../../repository';
 import {
   NestApiEntityRequestBodyTransformationPipe,
@@ -21,7 +25,6 @@ import {
   NestApiRequestIdPipe,
   NestApiRequestQueryValidationPipe,
 } from '../../request';
-import { SWAGGER_API_PARAMETERS_METADATA_KEY } from '../constants';
 import {
   getQueryMetadata,
   getRelationshipDescriptorByKey,
@@ -56,11 +59,10 @@ export const NestApiRequestQuery = (): ParameterDecorator => {
     const descriptor: PropertyDescriptor | undefined =
       Object.getOwnPropertyDescriptor(target, propertyKey);
 
-    const parameters: ParameterObject[] =
-      Reflect.getMetadata(
-        SWAGGER_API_PARAMETERS_METADATA_KEY,
-        descriptor?.value,
-      ) ?? [];
+    if (isNullOrUndefined(descriptor)) {
+      // TODO: proper error
+      throw new Error('Could not get property descriptor');
+    }
 
     const key: string = 'design:paramtypes';
     // TODO: fix typing
@@ -68,20 +70,14 @@ export const NestApiRequestQuery = (): ParameterDecorator => {
     const model: Type = paramMetadata[parameterIndex];
 
     const metadata: NestApiQueryMetadata = getQueryMetadata(model.prototype);
-    const metadataParameters: ParameterObject[] = metadata.parameters.map(
-      ({ openapi }) => openapi,
-    );
-    const metadataModels: Type[] = metadata.parameters
-      .map(({ type }) => type)
-      .filter(isNotNullOrUndefined);
+    metadata.parameters.forEach(({ type, openapi }) => {
+      ApiQuery(openapi)(target, propertyKey, descriptor);
 
-    Reflect.defineMetadata(
-      SWAGGER_API_PARAMETERS_METADATA_KEY,
-      [...parameters, ...metadataParameters],
-      descriptor?.value,
-    );
+      if (isNotNullOrUndefined(type)) {
+        ApiExtraModels(type)(target, propertyKey, descriptor);
+      }
+    });
 
-    ApiExtraModels(...metadataModels)(target, propertyKey, descriptor);
     SilentQuery(NestApiRequestQueryValidationPipe)(
       target,
       propertyKey,

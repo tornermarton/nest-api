@@ -37,13 +37,16 @@ export function QueryEntityDto<
       options: {
         style: 'form',
         explode: false,
+        enumName: `${type.name}EntityIncludeDto`,
+        // TODO: this is a hack since NestJS Swagger handles enums incorrectly
         schema: {
-          type: 'array',
+          type: 'string',
           items: {
             type: 'string',
             enum: [...(include ?? [])],
           },
         },
+        isArray: true,
       },
     })
     @IsOptional()
@@ -166,13 +169,16 @@ export function QueryEntitiesDto<
       options: {
         style: 'form',
         explode: false,
+        enumName: `${type.name}EntitiesSortDto`,
+        // TODO: this is a hack since NestJS Swagger handles enums incorrectly
         schema: {
-          type: 'array',
+          type: 'string',
           items: {
             type: 'string',
             enum: sortOptions,
           },
         },
+        isArray: true,
       },
     })
     @IsOptional()
@@ -185,13 +191,16 @@ export function QueryEntitiesDto<
       options: {
         style: 'form',
         explode: false,
+        enumName: `${type.name}EntitiesIncludeDto`,
+        // TODO: this is a hack since NestJS Swagger handles enums incorrectly
         schema: {
-          type: 'array',
+          type: 'string',
           items: {
             type: 'string',
             enum: [...(include ?? [])],
           },
         },
+        isArray: true,
       },
     })
     @IsOptional()

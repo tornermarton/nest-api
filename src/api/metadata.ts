@@ -1,6 +1,5 @@
 import { Type } from '@nestjs/common';
-import { ApiPropertyOptions } from '@nestjs/swagger';
-import { ParameterObject } from '@nestjs/swagger/dist/interfaces/open-api-spec.interface';
+import { ApiPropertyOptions, ApiQueryOptions } from '@nestjs/swagger';
 
 import {
   NEST_API_ENTITY_METADATA_KEY,
@@ -30,7 +29,7 @@ export type NestApiEntityMetadata = {
 
 export type NestApiQueryParameterMetadata = {
   type?: Type;
-  openapi: ParameterObject;
+  openapi: ApiQueryOptions;
 };
 
 export type NestApiQueryMetadata = {

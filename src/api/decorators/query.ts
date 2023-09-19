@@ -1,4 +1,5 @@
 import { Type } from '@nestjs/common';
+import { ApiQueryOptions } from '@nestjs/swagger';
 import { ParameterObject } from '@nestjs/swagger/dist/interfaces/open-api-spec.interface';
 
 import {
@@ -12,7 +13,8 @@ export function NestApiQueryParameter<T>({
   options,
 }: {
   type?: Type<T>;
-  options?: Omit<ParameterObject, 'name' | 'in' | 'required'>;
+  // TODO: should remove name and required since they get overwritten
+  options?: ApiQueryOptions;
 }): PropertyDecorator {
   // eslint-disable-next-line @typescript-eslint/ban-types
   return (target: Object, propertyKey: string | symbol): void => {
