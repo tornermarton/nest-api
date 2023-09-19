@@ -1,5 +1,5 @@
 import { Type } from '@nestjs/common';
-import { ApiProperty, getSchemaPath } from '@nestjs/swagger';
+import { ApiProperty, getSchemaPath, IntersectionType } from '@nestjs/swagger';
 import { Transform, Type as TransformType } from 'class-transformer';
 import {
   IsIn,
@@ -11,7 +11,13 @@ import {
   ValidateNested,
 } from 'class-validator';
 
-import { NestApiQueryParameter } from '../../api';
+import {
+  getQueryMetadata,
+  NestApiQueryMetadata,
+  NestApiQueryParameter,
+  setQueryMetadata,
+} from '../../api';
+import { isNotNullOrUndefined } from '../../core';
 
 export interface IQueryEntityDto<
   TModel,
@@ -20,7 +26,6 @@ export interface IQueryEntityDto<
   readonly include: TInclude[];
 }
 
-// TODO: remove optional omitted elements from API
 export function QueryEntityDto<
   TModel,
   TInclude extends Extract<keyof TModel, string> = never,
@@ -32,31 +37,50 @@ export function QueryEntityDto<
     include?: readonly TInclude[];
   },
 ): Type<IQueryEntityDto<TModel, TInclude>> {
-  class EntityQueryDtoClass implements IQueryEntityDto<TModel, TInclude> {
-    @NestApiQueryParameter({
-      options: {
-        style: 'form',
-        explode: false,
-        enumName: `${type.name}EntityIncludeDto`,
-        // TODO: this is a hack since NestJS Swagger handles enums incorrectly
-        schema: {
-          type: 'string',
-          items: {
+  const queryTypes: Type[] = [];
+
+  if (isNotNullOrUndefined(include)) {
+    const values: TInclude[] = [...include];
+
+    class QueryEntityWithInclude {
+      @NestApiQueryParameter({
+        options: {
+          style: 'form',
+          explode: false,
+          enumName: `${type.name}EntityIncludeDto`,
+          // TODO: this is a hack since NestJS Swagger handles enums incorrectly
+          schema: {
             type: 'string',
-            enum: [...(include ?? [])],
+            items: {
+              type: 'string',
+              enum: values,
+            },
           },
+          isArray: true,
         },
-        isArray: true,
-      },
-    })
-    @IsOptional()
-    @IsString({ each: true })
-    @IsIn(include ?? [], { each: true })
-    @Transform(({ value }) => (typeof value === 'string' ? [value] : value))
-    public readonly include: TInclude[] = [];
+      })
+      @IsOptional()
+      @IsString({ each: true })
+      @IsIn(values, { each: true })
+      @Transform(({ value }) => (typeof value === 'string' ? [value] : value))
+      public readonly include: TInclude[] = [];
+    }
+    queryTypes.push(QueryEntityWithInclude);
   }
 
-  return EntityQueryDtoClass;
+  class QueryDto extends IntersectionType(...queryTypes) {}
+
+  const metadata: NestApiQueryMetadata = queryTypes
+    .map((t) => getQueryMetadata(t.prototype))
+    .reduce(
+      (acc, metadata) => ({
+        parameters: [...acc.parameters, ...metadata.parameters],
+      }),
+      { parameters: [] },
+    );
+  setQueryMetadata(QueryDto.prototype, metadata);
+
+  return QueryDto as Type<IQueryEntityDto<TModel, TInclude>>;
 }
 
 export type SortDefinition<
@@ -127,10 +151,9 @@ export interface IQueryEntitiesDto<
   readonly page: PageDto;
 }
 
-// TODO: remove optional omitted elements from API
 export function QueryEntitiesDto<
   TModel,
-  TFilter,
+  TFilter = never,
   TSort extends Extract<keyof TModel, string> = never,
   TInclude extends Extract<keyof TModel, string> = never,
 >(
@@ -140,75 +163,94 @@ export function QueryEntitiesDto<
     sort,
     include,
   }: {
-    filter: Type<TFilter>;
+    filter?: Type<TFilter>;
     sort?: readonly SortDefinition<TModel, TSort>[];
     include?: readonly TInclude[];
   },
 ): Type<IQueryEntitiesDto<TModel, TFilter, TInclude>> {
-  const sortOptions: string[] = parseSortDefinitions(sort ?? []);
+  const queryTypes: Type[] = [];
 
-  class EntitiesQueryDtoClass
-    implements IQueryEntitiesDto<TModel, TFilter, TInclude>
-  {
-    @NestApiQueryParameter({
-      type: filter,
-      options: {
-        style: 'deepObject',
-        schema: {
-          $ref: getSchemaPath(filter),
-        },
-      },
-    })
-    @IsOptional()
-    @IsObject()
-    @ValidateNested()
-    @TransformType(() => filter)
-    public readonly filter: TFilter = {} as TFilter;
+  if (isNotNullOrUndefined(filter)) {
+    const type: Type<TFilter> = filter;
 
-    @NestApiQueryParameter({
-      options: {
-        style: 'form',
-        explode: false,
-        enumName: `${type.name}EntitiesSortDto`,
-        // TODO: this is a hack since NestJS Swagger handles enums incorrectly
-        schema: {
-          type: 'string',
-          items: {
-            type: 'string',
-            enum: sortOptions,
+    class QueryEntitiesWithFilter {
+      @NestApiQueryParameter({
+        type: filter,
+        options: {
+          style: 'deepObject',
+          schema: {
+            $ref: getSchemaPath(type),
           },
         },
-        isArray: true,
-      },
-    })
-    @IsOptional()
-    @IsString({ each: true })
-    @IsIn(sortOptions, { each: true })
-    @Transform(({ value }) => (typeof value === 'string' ? [value] : value))
-    public readonly sort: string[] = [];
+      })
+      @IsOptional()
+      @IsObject()
+      @ValidateNested()
+      @TransformType(() => type)
+      public readonly filter: TFilter = {} as TFilter;
+    }
+    queryTypes.push(QueryEntitiesWithFilter);
+  }
 
-    @NestApiQueryParameter({
-      options: {
-        style: 'form',
-        explode: false,
-        enumName: `${type.name}EntitiesIncludeDto`,
-        // TODO: this is a hack since NestJS Swagger handles enums incorrectly
-        schema: {
-          type: 'string',
-          items: {
+  if (isNotNullOrUndefined(sort)) {
+    const values: string[] = parseSortDefinitions(sort);
+
+    class QueryEntitiesWithSort {
+      @NestApiQueryParameter({
+        options: {
+          style: 'form',
+          explode: false,
+          enumName: `${type.name}EntitiesSortDto`,
+          // TODO: this is a hack since NestJS Swagger handles enums incorrectly
+          schema: {
             type: 'string',
-            enum: [...(include ?? [])],
+            items: {
+              type: 'string',
+              enum: values,
+            },
           },
+          isArray: true,
         },
-        isArray: true,
-      },
-    })
-    @IsOptional()
-    @IsString({ each: true })
-    @IsIn(include ?? [], { each: true })
-    @Transform(({ value }) => (typeof value === 'string' ? [value] : value))
-    public readonly include: TInclude[] = [];
+      })
+      @IsOptional()
+      @IsString({ each: true })
+      @IsIn(values, { each: true })
+      @Transform(({ value }) => (typeof value === 'string' ? [value] : value))
+      public readonly sort: string[] = [];
+    }
+    queryTypes.push(QueryEntitiesWithSort);
+  }
 
+  if (isNotNullOrUndefined(include)) {
+    const values: TInclude[] = [...include];
+
+    class QueryEntityWithInclude {
+      @NestApiQueryParameter({
+        options: {
+          style: 'form',
+          explode: false,
+          enumName: `${type.name}EntityIncludeDto`,
+          // TODO: this is a hack since NestJS Swagger handles enums incorrectly
+          schema: {
+            type: 'string',
+            items: {
+              type: 'string',
+              enum: values,
+            },
+          },
+          isArray: true,
+        },
+      })
+      @IsOptional()
+      @IsString({ each: true })
+      @IsIn(values, { each: true })
+      @Transform(({ value }) => (typeof value === 'string' ? [value] : value))
+      public readonly include: TInclude[] = [];
+    }
+    queryTypes.push(QueryEntityWithInclude);
+  }
+
+  class QueryEntitiesWithPage {
     @NestApiQueryParameter({
       type: PageDto,
       options: {
@@ -223,6 +265,19 @@ export function QueryEntitiesDto<
     @TransformType(() => PageDto)
     public readonly page: PageDto = new PageDto();
   }
+  queryTypes.push(QueryEntitiesWithPage);
 
-  return EntitiesQueryDtoClass;
+  class QueryDto extends IntersectionType(...queryTypes) {}
+
+  const metadata: NestApiQueryMetadata = queryTypes
+    .map((t) => getQueryMetadata(t.prototype))
+    .reduce(
+      (acc, metadata) => ({
+        parameters: [...acc.parameters, ...metadata.parameters],
+      }),
+      { parameters: [] },
+    );
+  setQueryMetadata(QueryDto.prototype, metadata);
+
+  return QueryDto as Type<IQueryEntitiesDto<TModel, TFilter, TInclude>>;
 }
