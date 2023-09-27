@@ -244,7 +244,10 @@ export function NestApiResource(
       const model: Type =
         descriptor.kind === 'toMany'
           ? NestApiResourceRelationshipToMany(relatedType, options)
-          : NestApiResourceRelationshipToOne(relatedType, options);
+          : NestApiResourceRelationshipToOne(relatedType, {
+              ...options,
+              nonNullable: descriptor.nonNullable,
+            });
       const kindSection: string =
         descriptor.kind.slice(0, 1).toUpperCase() + descriptor.kind.slice(1);
       renameType(
@@ -365,10 +368,7 @@ export function NestApiEntityRequestDocument(type: Type): Type {
 
 export class NestApiEntityResponseDocumentLinks extends NestApiCommonDocumentLinks {}
 
-export function NestApiEntityResponseDocument(
-  type: Type,
-  options?: { nullable?: boolean },
-): Type {
+export function NestApiEntityResponseDocument(type: Type): Type {
   const name: string = type.name;
 
   class Resource extends NestApiResource(type) {}
@@ -381,8 +381,8 @@ export function NestApiEntityResponseDocument(
     .map((t) => ({ $ref: getSchemaPath(t) }));
 
   class Document extends NestApiCommonDocument {
-    @ApiProperty({ type: Resource, nullable: options?.nullable })
-    public readonly data: Resource | null;
+    @ApiProperty({ type: Resource })
+    public readonly data: Resource;
 
     @ApiProperty({ type: NestApiEntityResponseDocumentLinks })
     public readonly links: NestApiEntityResponseDocumentLinks;
@@ -391,6 +391,38 @@ export function NestApiEntityResponseDocument(
     public readonly included?: unknown[];
   }
   renameType(Document, `${name}EntityResponseDocument`);
+
+  return Document;
+}
+
+export function NestApiRelatedEntityResponseDocument(
+  type: Type,
+  options?: { nonNullable?: boolean },
+): Type {
+  const name: string = type.name;
+  // TODO: maybe better naming can be implemented
+  const qualifier: string = !options?.nonNullable ? 'Nullable' : '';
+
+  class Resource extends NestApiResource(type) {}
+  renameType(Resource, name);
+
+  const metadata: NestApiEntityMetadata = getEntityMetadata(type.prototype);
+  const includedRefs: ReferenceObject[] = metadata.fields.relationships
+    .map(({ descriptor }) => descriptor)
+    .map(({ related }) => related())
+    .map((t) => ({ $ref: getSchemaPath(t) }));
+
+  class Document extends NestApiCommonDocument {
+    @ApiProperty({ type: Resource, nullable: !options?.nonNullable })
+    public readonly data: Resource | null;
+
+    @ApiProperty({ type: NestApiEntityResponseDocumentLinks })
+    public readonly links: NestApiEntityResponseDocumentLinks;
+
+    @ApiPropertyOptional({ type: 'array', items: { oneOf: includedRefs } })
+    public readonly included?: unknown[];
+  }
+  renameType(Document, `${name}${qualifier}RelatedEntityResponseDocument`);
 
   return Document;
 }

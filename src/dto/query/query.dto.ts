@@ -19,11 +19,12 @@ import {
 } from '../../api';
 import { isNotNullOrUndefined } from '../../core';
 
+// TODO: typing based on function input
 export interface IQueryEntityDto<
   TModel,
   TInclude extends Extract<keyof TModel, string>,
 > {
-  readonly include: TInclude[];
+  readonly include?: TInclude[];
 }
 
 export function QueryEntityDto<
@@ -140,14 +141,15 @@ export class PageDto {
   public readonly limit: number = PageDto.DEFAULT_LIMIT;
 }
 
+// TODO: typing based on function input
 export interface IQueryEntitiesDto<
   TModel,
   TFilter,
   TInclude extends Extract<keyof TModel, string>,
 > {
-  readonly filter: TFilter;
-  readonly sort: string[];
-  readonly include: TInclude[];
+  readonly filter?: TFilter;
+  readonly sort?: string[];
+  readonly include?: TInclude[];
   readonly page: PageDto;
 }
 
@@ -229,7 +231,7 @@ export function QueryEntitiesDto<
         options: {
           style: 'form',
           explode: false,
-          enumName: `${type.name}EntityIncludeDto`,
+          enumName: `${type.name}EntitiesIncludeDto`,
           // TODO: this is a hack since NestJS Swagger handles enums incorrectly
           schema: {
             type: 'string',

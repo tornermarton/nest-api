@@ -13,7 +13,7 @@ import {
   EntityUpdateDto,
 } from '../../repository';
 
-function filterDtoToQuery(filter: unknown): Record<string, unknown> {
+function filterDtoToQuery<T>(filter: T): Record<string, unknown> {
   return instanceToPlain(filter);
 }
 
@@ -47,7 +47,7 @@ export class MongooseEntityRepository<
   public count<TFilter>(
     query: Omit<IQueryEntitiesDto<TEntity, TFilter, never>, 'include'>,
   ): Observable<number> {
-    const filter = filterDtoToQuery(query.filter);
+    const filter = filterDtoToQuery(query.filter ?? {});
 
     return from(this._model.find(filter).countDocuments().exec());
   }
@@ -55,8 +55,8 @@ export class MongooseEntityRepository<
   public find<TFilter>(
     query: Omit<IQueryEntitiesDto<TEntity, TFilter, never>, 'include'>,
   ): Observable<TEntity[]> {
-    const filter = filterDtoToQuery(query.filter);
-    const sort = sortDtoToQuery(query.sort);
+    const filter = filterDtoToQuery(query.filter ?? {});
+    const sort = sortDtoToQuery(query.sort ?? []);
 
     const req = this._model
       .find(filter)

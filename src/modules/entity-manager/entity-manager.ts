@@ -172,7 +172,7 @@ export class EntityManager<
         ),
         map(({ entities, included }) => ({
           entities,
-          included: query.include.length > 0 ? included : undefined,
+          included: (query.include?.length ?? 0) > 0 ? included : undefined,
         })),
       );
     const count$: Observable<number | undefined> = options?.count

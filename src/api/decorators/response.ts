@@ -19,17 +19,16 @@ import {
   NestApiEntitiesResponseDocument,
   NestApiEntityResponseDocument,
   NestApiErrorDocument,
+  NestApiRelatedEntityResponseDocument,
   NestApiRelationshipResponseDocument,
   NestApiRelationshipsResponseDocument,
 } from '../models';
 
 export const NestApiEntityResponse = <TModel extends Type>(
   model: TModel,
-  options?: ApiResponseOptions & { nullable?: boolean },
+  options?: ApiResponseOptions,
 ): MethodDecorator => {
-  const document: Type = NestApiEntityResponseDocument(model, {
-    nullable: options?.nullable,
-  });
+  const document: Type = NestApiEntityResponseDocument(model);
 
   return applyDecorators(
     ApiExtraModels(document),
@@ -63,16 +62,18 @@ export const NestApiRelatedEntityResponse = <
 >(
   model: Type<TEntity>,
   key: TKey,
-  options?: ApiResponseOptions & { nonNullable?: boolean },
+  options?: ApiResponseOptions,
 ): MethodDecorator => {
   const descriptor: RelationshipDescriptor<any> =
     getRelationshipDescriptorByKey(model, key);
 
   const type: Type = descriptor.related();
-  const nullable: boolean =
-    descriptor.kind === 'toOne' ? !descriptor.nonNullable : false;
+  const nonNullable: boolean =
+    descriptor.kind === 'toOne' ? !!descriptor.nonNullable : false;
 
-  const document: Type = NestApiEntityResponseDocument(type, { nullable });
+  const document: Type = NestApiRelatedEntityResponseDocument(type, {
+    nonNullable,
+  });
 
   return applyDecorators(
     ApiExtraModels(document),
