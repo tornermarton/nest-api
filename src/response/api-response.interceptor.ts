@@ -270,11 +270,9 @@ export class ApiResponseInterceptor
     }
 
     const status: number = response.statusCode as number;
+    const timestamp: Date = new Date();
     const reason: string = getReasonPhrase(status);
-    const meta: NestApiDocumentMetaInterface = {
-      status: status,
-      reason: reason,
-    };
+    const meta: NestApiDocumentMetaInterface = { status, timestamp, reason };
 
     return next.handle().pipe(
       map(

@@ -51,6 +51,7 @@ export type NestApiResourceInterface = NestApiResourceIdentifierInterface & {
 
 export type NestApiDocumentMetaInterface = {
   readonly status: number;
+  readonly timestamp: Date;
   readonly reason?: string;
 };
 

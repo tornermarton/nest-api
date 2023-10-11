@@ -22,6 +22,7 @@ import { getNestApiCommonDocumentLinks } from './utils';
 import {
   NestApiDocumentMetaInterface,
   NestApiErrorDocumentInterface,
+  NestApiErrorDocumentLinksInterface,
   NestApiErrorInterface,
   NestApiGenericErrorInterface,
 } from '../api';
@@ -72,12 +73,7 @@ export class ApiResponseExceptionFilter<
     status: number,
     title: string,
   ): NestApiGenericErrorInterface[] {
-    return [
-      {
-        status: status,
-        title: title,
-      },
-    ];
+    return [{ status, title }];
   }
 
   private getErrors(
@@ -110,13 +106,7 @@ export class ApiResponseExceptionFilter<
       detail = response['message'];
     }
 
-    return [
-      {
-        status: status,
-        title: title,
-        detail: detail,
-      },
-    ];
+    return [{ status, title, detail }];
   }
 
   private log(exception: T): void {
@@ -151,11 +141,9 @@ export class ApiResponseExceptionFilter<
     this.log(exception);
 
     const status: number = this.getStatus(exception);
+    const timestamp: Date = new Date();
     const reason: string = this.getReason(status);
-    const meta: NestApiDocumentMetaInterface = {
-      status: status,
-      reason: reason,
-    };
+    const meta: NestApiDocumentMetaInterface = { status, timestamp, reason };
 
     const errors: NestApiErrorInterface[] = this.getErrors(
       exception,
@@ -163,11 +151,10 @@ export class ApiResponseExceptionFilter<
       reason,
     );
 
-    const body: NestApiErrorDocumentInterface = {
-      meta: meta,
-      errors: errors,
-      links: getNestApiCommonDocumentLinks(request),
-    };
+    const links: NestApiErrorDocumentLinksInterface =
+      getNestApiCommonDocumentLinks(request);
+
+    const body: NestApiErrorDocumentInterface = { meta, errors, links };
 
     adapter.reply(response, body, status);
   }

@@ -328,6 +328,9 @@ export class NestApiDocumentMeta {
   public readonly status: number;
 
   @ApiProperty()
+  public readonly timestamp: Date;
+
+  @ApiProperty()
   public readonly reason: string;
 }
 
