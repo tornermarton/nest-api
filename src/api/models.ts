@@ -373,26 +373,35 @@ export class NestApiEntityResponseDocumentLinks extends NestApiCommonDocumentLin
 
 export function NestApiEntityResponseDocument(type: Type): Type {
   const name: string = type.name;
+  const documentTypes: Type[] = [];
 
   class Resource extends NestApiResource(type) {}
   renameType(Resource, name);
 
-  const metadata: NestApiEntityMetadata = getEntityMetadata(type.prototype);
-  const includedRefs: ReferenceObject[] = metadata.fields.relationships
-    .map(({ descriptor }) => descriptor)
-    .map(({ related }) => related())
-    .map((t) => ({ $ref: getSchemaPath(t) }));
-
-  class Document extends NestApiCommonDocument {
+  class DocumentBase extends NestApiCommonDocument {
     @ApiProperty({ type: Resource })
     public readonly data: Resource;
 
     @ApiProperty({ type: NestApiEntityResponseDocumentLinks })
     public readonly links: NestApiEntityResponseDocumentLinks;
-
-    @ApiPropertyOptional({ type: 'array', items: { oneOf: includedRefs } })
-    public readonly included?: unknown[];
   }
+  documentTypes.push(DocumentBase);
+
+  const metadata: NestApiEntityMetadata = getEntityMetadata(type.prototype);
+  if (metadata.fields.relationships.length > 0) {
+    const includedRefs: ReferenceObject[] = metadata.fields.relationships
+      .map(({ descriptor }) => descriptor)
+      .map(({ related }) => related())
+      .map((t) => ({ $ref: getSchemaPath(t) }));
+
+    class DocumentWithIncluded {
+      @ApiPropertyOptional({ type: 'array', items: { oneOf: includedRefs } })
+      public readonly included?: unknown[];
+    }
+    documentTypes.push(DocumentWithIncluded);
+  }
+
+  class Document extends IntersectionType(...documentTypes) {}
   renameType(Document, `${name}EntityResponseDocument`);
 
   return Document;
@@ -405,26 +414,35 @@ export function NestApiRelatedEntityResponseDocument(
   const name: string = type.name;
   // TODO: maybe better naming can be implemented
   const qualifier: string = !options?.nonNullable ? 'Nullable' : '';
+  const documentTypes: Type[] = [];
 
   class Resource extends NestApiResource(type) {}
   renameType(Resource, name);
 
-  const metadata: NestApiEntityMetadata = getEntityMetadata(type.prototype);
-  const includedRefs: ReferenceObject[] = metadata.fields.relationships
-    .map(({ descriptor }) => descriptor)
-    .map(({ related }) => related())
-    .map((t) => ({ $ref: getSchemaPath(t) }));
-
-  class Document extends NestApiCommonDocument {
+  class DocumentBase extends NestApiCommonDocument {
     @ApiProperty({ type: Resource, nullable: !options?.nonNullable })
     public readonly data: Resource | null;
 
     @ApiProperty({ type: NestApiEntityResponseDocumentLinks })
     public readonly links: NestApiEntityResponseDocumentLinks;
-
-    @ApiPropertyOptional({ type: 'array', items: { oneOf: includedRefs } })
-    public readonly included?: unknown[];
   }
+  documentTypes.push(DocumentBase);
+
+  const metadata: NestApiEntityMetadata = getEntityMetadata(type.prototype);
+  if (metadata.fields.relationships.length > 0) {
+    const includedRefs: ReferenceObject[] = metadata.fields.relationships
+      .map(({ descriptor }) => descriptor)
+      .map(({ related }) => related())
+      .map((t) => ({ $ref: getSchemaPath(t) }));
+
+    class DocumentWithIncluded {
+      @ApiPropertyOptional({ type: 'array', items: { oneOf: includedRefs } })
+      public readonly included?: unknown[];
+    }
+    documentTypes.push(DocumentWithIncluded);
+  }
+
+  class Document extends IntersectionType(...documentTypes) {}
   renameType(Document, `${name}${qualifier}RelatedEntityResponseDocument`);
 
   return Document;
@@ -437,17 +455,12 @@ export class NestApiEntitiesResponseDocumentLinks extends IntersectionType(
 
 export function NestApiEntitiesResponseDocument(type: Type): Type {
   const name: string = type.name;
+  const documentTypes: Type[] = [];
 
   class Resource extends NestApiResource(type) {}
   renameType(Resource, name);
 
-  const metadata: NestApiEntityMetadata = getEntityMetadata(type.prototype);
-  const includedRefs: ReferenceObject[] = metadata.fields.relationships
-    .map(({ descriptor }) => descriptor)
-    .map(({ related }) => related())
-    .map((t) => ({ $ref: getSchemaPath(t) }));
-
-  class Document extends NestApiCommonDocument {
+  class DocumentBase extends NestApiCommonDocument {
     @ApiProperty({ type: Resource, isArray: true })
     public readonly data: Resource[];
 
@@ -456,10 +469,24 @@ export function NestApiEntitiesResponseDocument(type: Type): Type {
 
     @ApiProperty({ type: NestApiDocumentPaging })
     public readonly paging: NestApiDocumentPaging;
-
-    @ApiPropertyOptional({ type: 'array', items: { oneOf: includedRefs } })
-    public readonly included?: unknown[];
   }
+  documentTypes.push(DocumentBase);
+
+  const metadata: NestApiEntityMetadata = getEntityMetadata(type.prototype);
+  if (metadata.fields.relationships.length > 0) {
+    const includedRefs: ReferenceObject[] = metadata.fields.relationships
+      .map(({ descriptor }) => descriptor)
+      .map(({ related }) => related())
+      .map((t) => ({ $ref: getSchemaPath(t) }));
+
+    class DocumentWithIncluded {
+      @ApiPropertyOptional({ type: 'array', items: { oneOf: includedRefs } })
+      public readonly included?: unknown[];
+    }
+    documentTypes.push(DocumentWithIncluded);
+  }
+
+  class Document extends IntersectionType(...documentTypes) {}
   renameType(Document, `${name}EntitiesResponseDocument`);
 
   return Document;
