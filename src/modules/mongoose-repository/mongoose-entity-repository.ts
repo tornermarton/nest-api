@@ -1,10 +1,11 @@
 import { Type } from '@nestjs/common';
-import { instanceToPlain, plainToInstance } from 'class-transformer';
+import { plainToInstance } from 'class-transformer';
 import { Model } from 'mongoose';
 import { concatAll, from, Observable, toArray } from 'rxjs';
 import { map } from 'rxjs/operators';
 
 import { MongooseEntity } from './mongoose-entity';
+import { filterDtoToQuery, sortDtoToQuery } from './utils';
 import { isNotNullOrUndefined } from '../../core';
 import { IQueryEntitiesDto } from '../../dto';
 import {
@@ -12,21 +13,6 @@ import {
   EntityRepository,
   EntityUpdateDto,
 } from '../../repository';
-
-function filterDtoToQuery<T>(filter: T): Record<string, unknown> {
-  return instanceToPlain(filter);
-}
-
-function sortDtoToQuery(sort: string[]): Record<string, 1 | -1> {
-  return sort.reduce((acc, curr) => {
-    if (curr.startsWith('-')) {
-      acc[curr.substring(1)] = -1;
-    } else {
-      acc[curr] = 1;
-    }
-    return acc;
-  }, {});
-}
 
 export class MongooseEntityRepository<
   TEntity extends MongooseEntity,

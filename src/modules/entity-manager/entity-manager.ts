@@ -15,7 +15,11 @@ import { map } from 'rxjs/operators';
 
 import { EntityManagerService } from './entity-manager.service';
 import { Entity, isNotNullOrUndefined, isNullOrUndefined } from '../../core';
-import { IQueryEntitiesDto, IQueryEntityDto } from '../../dto';
+import {
+  IQueryEntitiesDto,
+  IQueryEntityDto,
+  IQueryRelationshipsDto,
+} from '../../dto';
 import {
   EntityCreateDto,
   EntityRepository,
@@ -99,7 +103,7 @@ export class EntityManager<
     return from(relationshipKeys).pipe(
       map((key) => {
         if (include.includes(key as TInclude)) {
-          return this.findRelated(key, entity.id).pipe(
+          return this.readRelated(key, entity.id).pipe(
             map(({ data }) => ({
               relationships: {
                 [key]: Array.isArray(data)
@@ -116,7 +120,7 @@ export class EntityManager<
             })),
           );
         } else {
-          return this.findRelationship(key, entity.id).pipe(
+          return this.readRelationship(key, entity.id).pipe(
             map(({ data }) => ({
               relationships: { [key]: data },
               included: [],
@@ -294,9 +298,14 @@ export class EntityManager<
     return this._entity.repository.delete(id);
   }
 
-  public findRelated<TRelated extends Entity, TKey extends TRelationships>(
+  public findRelated<
+    TRelated extends Entity,
+    TKey extends TRelationships,
+    TFilter = never,
+  >(
     key: TKey,
     id1: string,
+    query: IQueryRelationshipsDto<TFilter>,
     options?: { count: boolean },
   ): Observable<TypedRelatedEntitiesResponse<TEntity[TKey], TRelated>> {
     const definition = this._relationships[
@@ -306,15 +315,17 @@ export class EntityManager<
     const { kind, related } = descriptor;
     const relatedManager = this._service.get<TRelated>(related());
 
-    const entities$: Observable<TRelated[]> = repository.findRelated(id1).pipe(
-      concatAll(),
-      concatMap((entity) => relatedManager.transform(entity)),
-      map(({ entity }) => entity),
-      toArray(),
-    );
+    const entities$: Observable<TRelated[]> = repository
+      .findRelated(id1, query)
+      .pipe(
+        concatAll(),
+        concatMap((entity) => relatedManager.transform(entity)),
+        map(({ entity }) => entity),
+        toArray(),
+      );
 
     const count$: Observable<number | undefined> = options?.count
-      ? repository.count(id1)
+      ? repository.countRelated(id1, query)
       : of(undefined);
 
     return forkJoin([entities$, count$]).pipe(
@@ -331,22 +342,52 @@ export class EntityManager<
     );
   }
 
-  public findRelationship<TKey extends TRelationships>(
+  public readRelated<TRelated extends Entity, TKey extends TRelationships>(
     key: TKey,
     id1: string,
+    id2set?: TypedId2Set<TEntity[TKey]>,
+  ): Observable<TypedRelatedEntitiesResponse<TEntity[TKey], TRelated>> {
+    const { descriptor, repository } = this._relationships[
+      key
+    ] as EntityManagerRelationshipDefinition<TRelated>;
+    const { kind, related } = descriptor;
+    const relatedManager = this._service.get<TRelated>(related());
+
+    return repository.readRelated(id1, id2set).pipe(
+      concatAll(),
+      concatMap((entity) => relatedManager.transform(entity)),
+      map(({ entity }) => entity),
+      toArray(),
+      map((entities) => {
+        if (kind === 'toOne') {
+          const entity = entities.length > 0 ? entities[0] : undefined;
+
+          return new RelatedEntityResponse(entity);
+        } else {
+          return new RelatedEntitiesResponse(entities);
+        }
+      }),
+      map((r) => r as TypedRelatedEntitiesResponse<TEntity[TKey], TRelated>),
+    );
+  }
+
+  public findRelationship<TKey extends TRelationships, TFilter = never>(
+    key: TKey,
+    id1: string,
+    query: IQueryRelationshipsDto<TFilter>,
     options?: { count: boolean },
   ): Observable<TypedRelationshipResponse<TEntity[TKey]>> {
     const { descriptor, repository } = this._relationships[key];
     const { kind, related } = descriptor;
 
-    const ids$: Observable<string[]> = repository.find(id1).pipe(
+    const ids$: Observable<string[]> = repository.find(id1, query).pipe(
       concatAll(),
       map(({ id2 }) => id2),
       toArray(),
     );
 
     const count$: Observable<number | undefined> = options?.count
-      ? repository.count(id1)
+      ? repository.count(id1, query)
       : of(undefined);
 
     return forkJoin([ids$, count$]).pipe(
@@ -373,6 +414,31 @@ export class EntityManager<
     const { kind, related } = descriptor;
 
     return repository.create(id1, id2set, createdBy).pipe(
+      concatAll(),
+      map(({ id2 }) => id2),
+      toArray(),
+      map((ids) => {
+        if (kind === 'toOne') {
+          const id = ids.length > 0 ? ids[0] : undefined;
+
+          return new RelationshipResponse(related(), id);
+        } else {
+          return new RelationshipsResponse(related(), ids);
+        }
+      }),
+      map((r) => r as TypedRelationshipResponse<TEntity[TKey]>),
+    );
+  }
+
+  public readRelationship<TKey extends TRelationships>(
+    key: TKey,
+    id1: string,
+    id2set?: TypedId2Set<TEntity[TKey]>,
+  ): Observable<TypedRelationshipResponse<TEntity[TKey]>> {
+    const { descriptor, repository } = this._relationships[key];
+    const { kind, related } = descriptor;
+
+    return repository.read(id1, id2set).pipe(
       concatAll(),
       map(({ id2 }) => id2),
       toArray(),

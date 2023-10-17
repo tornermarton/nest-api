@@ -4,9 +4,13 @@ import {
   catchError,
   concatAll,
   concatMap,
+  count,
+  filter,
   from,
   Observable,
   of,
+  skip,
+  take,
   tap,
   throwError,
   toArray,
@@ -15,12 +19,14 @@ import { map } from 'rxjs/operators';
 
 import { MongooseEntity } from './mongoose-entity';
 import { MongooseRelationship } from './mongoose-relationship';
+import { filterDtoToQuery } from './utils';
 import {
   Entity,
   isNotNullOrUndefined,
   isNullOrUndefined,
   Relationship,
 } from '../../core';
+import { IQueryRelationshipsDto } from '../../dto';
 import {
   RelationshipDescriptor,
   RelationshipRepository,
@@ -203,57 +209,140 @@ export class MongooseRelationshipRepository<
     );
   }
 
-  public count(id1: string, id2set?: string[]): Observable<number> {
-    const { model } = this._definition;
+  public count<TFilter>(
+    id1: string,
+    query: IQueryRelationshipsDto<TFilter>,
+  ): Observable<number> {
+    const { model, descriptor } = this._definition;
 
-    const filter = { id1 };
+    if (isNullOrUndefined(query.filter)) {
+      const req = model.find({ id1 }).countDocuments();
 
-    if (isNotNullOrUndefined(id2set)) {
-      filter['id2'] = { $in: id2set };
+      return from(req.exec());
     }
 
-    return from(model.find(filter).countDocuments().exec());
-  }
+    // TODO: this method is very expensive but currently will suffice, should probably start from related direction
+    const relationshipsFilter = { id1 };
+    const relatedFilter = filterDtoToQuery(query.filter);
 
-  public find(id1: string, id2set?: string[]): Observable<Relationship[]> {
-    const { model } = this._definition;
-
-    const filter = { id1 };
-
-    if (isNotNullOrUndefined(id2set)) {
-      filter['id2'] = { $in: id2set };
-    }
-
-    // TODO: add optimization if id2set has only one element
-    const req = model.find(filter);
-
-    return from(req.exec()).pipe(
-      concatAll(),
-      map((relationship) => relationship.toObject()),
-      map((relationship) => this.transform(relationship)),
-      toArray(),
-    );
-  }
-
-  public findRelated(id1: string, id2set?: string[]): Observable<TRelated[]> {
-    const { model } = this._definition;
-
-    const filter = { id1 };
-
-    if (isNotNullOrUndefined(id2set)) {
-      filter['id2'] = { $in: id2set };
-    }
-
-    // TODO: add optimization if id2set has only one element
-    const req = model.find(filter).populate({
+    const req = model.find(relationshipsFilter).populate({
       path: 'id2',
-      model: this._definition.descriptor.related().name,
+      model: descriptor.related().name,
+      match: relatedFilter,
     });
 
     return from(req.exec()).pipe(
       concatAll(),
       map((relationship) => relationship.toObject()),
-      map((relationship) => this.transformRelated(relationship.id2)),
+      map(({ id2 }) => id2),
+      filter(isNotNullOrUndefined),
+      toArray(),
+      count(),
+    );
+  }
+
+  public find<TFilter>(
+    id1: string,
+    query: IQueryRelationshipsDto<TFilter>,
+  ): Observable<Relationship[]> {
+    const { model, descriptor } = this._definition;
+
+    if (isNullOrUndefined(query.filter)) {
+      const req = model
+        .find({ id1 })
+        .skip(query.page.offset)
+        .limit(query.page.limit);
+
+      return from(req.exec()).pipe(
+        concatAll(),
+        map((relationship) => relationship.toObject()),
+        map((relationship) => this.transform(relationship)),
+        toArray(),
+      );
+    }
+
+    // TODO: this method is very expensive but currently will suffice, should probably start from related direction
+    const relationshipsFilter = { id1 };
+    const relatedFilter = filterDtoToQuery(query.filter);
+
+    const req = model.find(relationshipsFilter).populate({
+      path: 'id2',
+      model: descriptor.related().name,
+      match: relatedFilter,
+    });
+
+    return from(req.exec()).pipe(
+      concatAll(),
+      map((relationship) => relationship.toObject()),
+      filter(({ id2 }) => isNotNullOrUndefined(id2)),
+      skip(query.page.offset),
+      take(query.page.limit),
+      map((relationship) => ({
+        ...relationship,
+        // TODO: correct typing
+        id2: (relationship.id2 as unknown as TRelated).id,
+      })),
+      map((relationship) => this.transform(relationship)),
+      toArray(),
+    );
+  }
+
+  public countRelated<TFilter>(
+    id1: string,
+    query: IQueryRelationshipsDto<TFilter>,
+  ): Observable<number> {
+    const { model, descriptor } = this._definition;
+
+    if (isNullOrUndefined(query.filter)) {
+      const req = model.find({ id1 }).countDocuments();
+
+      return from(req.exec());
+    }
+
+    // TODO: this method is very expensive but currently will suffice, should probably start from related direction
+    const relationshipsFilter = { id1 };
+    const relatedFilter = filterDtoToQuery(query.filter);
+
+    const req = model.find(relationshipsFilter).populate({
+      path: 'id2',
+      model: descriptor.related().name,
+      match: relatedFilter,
+    });
+
+    return from(req.exec()).pipe(
+      concatAll(),
+      map((relationship) => relationship.toObject()),
+      map(({ id2 }) => id2),
+      filter(isNotNullOrUndefined),
+      toArray(),
+      count(),
+    );
+  }
+
+  public findRelated<TFilter = never>(
+    id1: string,
+    query: IQueryRelationshipsDto<TFilter>,
+  ): Observable<TRelated[]> {
+    const { model, descriptor } = this._definition;
+
+    // TODO: this method is very expensive but currently will suffice, should probably start from related direction
+    const relationshipsFilter = { id1 };
+    const relatedFilter = filterDtoToQuery(query.filter ?? {});
+
+    const req = model.find(relationshipsFilter).populate({
+      path: 'id2',
+      model: descriptor.related().name,
+      match: relatedFilter,
+    });
+
+    return from(req.exec()).pipe(
+      concatAll(),
+      map((relationship) => relationship.toObject()),
+      map(({ id2 }) => id2),
+      filter(isNotNullOrUndefined),
+      skip(query.page.offset),
+      take(query.page.limit),
+      map((related) => this.transformRelated(related)),
       toArray(),
     );
   }
@@ -288,8 +377,49 @@ export class MongooseRelationshipRepository<
 
           return this._updateInverse(session, id1, id2set, createdBy);
         }),
-        concatMap(() => this.find(id1, id2set)),
+        concatMap(() => this.read(id1, id2set)),
       ),
+    );
+  }
+
+  public read(id1: string, id2set?: string[]): Observable<Relationship[]> {
+    const { model } = this._definition;
+
+    const relationshipsFilter = { id1 };
+
+    if (isNotNullOrUndefined(id2set)) {
+      relationshipsFilter['id2'] = { $in: id2set };
+    }
+
+    return from(model.find(relationshipsFilter).exec()).pipe(
+      concatAll(),
+      map((relationship) => relationship.toObject()),
+      map((relationship) => this.transform(relationship)),
+      toArray(),
+    );
+  }
+
+  public readRelated(id1: string, id2set?: string[]): Observable<TRelated[]> {
+    const { model, descriptor } = this._definition;
+
+    const relationshipsFilter = { id1 };
+
+    if (isNotNullOrUndefined(id2set)) {
+      relationshipsFilter['id2'] = { $in: id2set };
+    }
+
+    const req = model.find(relationshipsFilter).populate({
+      path: 'id2',
+      model: descriptor.related().name,
+    });
+
+    return from(req.exec()).pipe(
+      concatAll(),
+      map((relationship) => relationship.toObject()),
+      map(({ id2 }) => id2),
+      filter(isNotNullOrUndefined),
+      map((related) => this.transformRelated(related)),
+      toArray(),
     );
   }
 
@@ -302,7 +432,7 @@ export class MongooseRelationshipRepository<
       of(void 0).pipe(
         concatMap(() => this._update(session, id1, id2set, createdBy)),
         concatMap(() => this._updateInverse(session, id1, id2set, createdBy)),
-        concatMap(() => this.find(id1, id2set)),
+        concatMap(() => this.read(id1, id2set)),
       ),
     );
   }

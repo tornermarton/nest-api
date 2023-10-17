@@ -64,7 +64,7 @@ export function QueryEntityDto<
       @IsString({ each: true })
       @IsIn(values, { each: true })
       @Transform(({ value }) => (typeof value === 'string' ? [value] : value))
-      public readonly include: TInclude[] = [];
+      public readonly include?: TInclude[];
     }
     queryTypes.push(QueryEntityWithInclude);
   }
@@ -189,7 +189,7 @@ export function QueryEntitiesDto<
       @IsObject()
       @ValidateNested()
       @TransformType(() => type)
-      public readonly filter: TFilter = {} as TFilter;
+      public readonly filter?: TFilter;
     }
     queryTypes.push(QueryEntitiesWithFilter);
   }
@@ -218,7 +218,7 @@ export function QueryEntitiesDto<
       @IsString({ each: true })
       @IsIn(values, { each: true })
       @Transform(({ value }) => (typeof value === 'string' ? [value] : value))
-      public readonly sort: string[] = [];
+      public readonly sort?: string[];
     }
     queryTypes.push(QueryEntitiesWithSort);
   }
@@ -247,7 +247,7 @@ export function QueryEntitiesDto<
       @IsString({ each: true })
       @IsIn(values, { each: true })
       @Transform(({ value }) => (typeof value === 'string' ? [value] : value))
-      public readonly include: TInclude[] = [];
+      public readonly include?: TInclude[];
     }
     queryTypes.push(QueryEntityWithInclude);
   }
@@ -282,4 +282,71 @@ export function QueryEntitiesDto<
   setQueryMetadata(QueryDto.prototype, metadata);
 
   return QueryDto as Type<IQueryEntitiesDto<TModel, TFilter, TInclude>>;
+}
+
+// TODO: typing based on function input
+export interface IQueryRelationshipsDto<TFilter> {
+  readonly filter?: TFilter;
+  readonly page: PageDto;
+}
+
+export function QueryRelationshipsDto<TFilter = never>({
+  filter,
+}: {
+  filter?: Type<TFilter>;
+}): Type<IQueryRelationshipsDto<TFilter>> {
+  const queryTypes: Type[] = [];
+
+  if (isNotNullOrUndefined(filter)) {
+    const type: Type<TFilter> = filter;
+
+    class QueryRelatedWithFilter {
+      @NestApiQueryParameter({
+        type: filter,
+        options: {
+          style: 'deepObject',
+          schema: {
+            $ref: getSchemaPath(type),
+          },
+        },
+      })
+      @IsOptional()
+      @IsObject()
+      @ValidateNested()
+      @TransformType(() => type)
+      public readonly filter?: TFilter;
+    }
+    queryTypes.push(QueryRelatedWithFilter);
+  }
+
+  class QueryRelatedWithPage {
+    @NestApiQueryParameter({
+      type: PageDto,
+      options: {
+        style: 'deepObject',
+        schema: {
+          $ref: getSchemaPath(PageDto),
+        },
+      },
+    })
+    @IsOptional()
+    @ValidateNested()
+    @TransformType(() => PageDto)
+    public readonly page: PageDto = new PageDto();
+  }
+  queryTypes.push(QueryRelatedWithPage);
+
+  class QueryDto extends IntersectionType(...queryTypes) {}
+
+  const metadata: NestApiQueryMetadata = queryTypes
+    .map((t) => getQueryMetadata(t.prototype))
+    .reduce(
+      (acc, metadata) => ({
+        parameters: [...acc.parameters, ...metadata.parameters],
+      }),
+      { parameters: [] },
+    );
+  setQueryMetadata(QueryDto.prototype, metadata);
+
+  return QueryDto as Type<IQueryRelationshipsDto<TFilter>>;
 }
