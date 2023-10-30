@@ -1,7 +1,7 @@
 import { Request } from 'express';
 import { parse, stringify } from 'qs';
 
-import { EntityResponse } from './models';
+import { BaseUrl, EntityResponse } from './models';
 import {
   NestApiDocumentPaging,
   NestApiPaginationLinksInterface,
@@ -32,29 +32,42 @@ export function getNestApiDocumentPaging(
   return { ...page, total };
 }
 
-function getSelfLink(request: Request): string {
+function createBaseUrlString(baseUrl: BaseUrl): string {
+  if (baseUrl.url.port === 80 || baseUrl.url.port === 443) {
+    return `${baseUrl.url.scheme}://${baseUrl.url.host}`;
+  }
+
+  return `${baseUrl.url.scheme}://${baseUrl.url.host}:${baseUrl.url.port}`;
+}
+
+function getSelfLink(baseUrl: BaseUrl, request: Request): string {
+  const url: string = createBaseUrlString(baseUrl);
+
   // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-  return `${request.protocol}://${request.headers.host}${request.originalUrl}`;
+  return `${url}${request.originalUrl}`;
 }
 
 export function getNestApiCommonDocumentLinks(
+  baseUrl: BaseUrl,
   request: Request,
 ): NestApiCommonDocumentLinksInterface {
   return {
-    self: getSelfLink(request),
+    self: getSelfLink(baseUrl, request),
   };
 }
 
 export function getNestApiEntityDocumentLinks(
+  baseUrl: BaseUrl,
   request: Request,
 ): NestApiEntityResponseDocumentLinksInterface {
-  return getNestApiCommonDocumentLinks(request);
+  return getNestApiCommonDocumentLinks(baseUrl, request);
 }
 
 export function getNestApiRelationshipDocumentLinks(
+  baseUrl: BaseUrl,
   request: Request,
 ): NestApiRelationshipResponseDocumentLinks {
-  const links = getNestApiCommonDocumentLinks(request);
+  const links = getNestApiCommonDocumentLinks(baseUrl, request);
 
   return {
     ...links,
@@ -129,10 +142,11 @@ function getNestApiPaginationLinks(
 }
 
 export function getNestApiEntitiesDocumentLinks(
+  baseUrl: BaseUrl,
   request: Request,
   total = Infinity,
 ): NestApiEntitiesResponseDocumentLinksInterface {
-  const commonLinks = getNestApiCommonDocumentLinks(request);
+  const commonLinks = getNestApiCommonDocumentLinks(baseUrl, request);
 
   const { self } = commonLinks;
   const paginationLinks = getNestApiPaginationLinks(request, self, total);
@@ -141,10 +155,11 @@ export function getNestApiEntitiesDocumentLinks(
 }
 
 export function getNestApiRelationshipsDocumentLinks(
+  baseUrl: BaseUrl,
   request: Request,
   total = Infinity,
 ): NestApiRelationshipResponseDocumentLinks {
-  const commonLinks = getNestApiCommonDocumentLinks(request);
+  const commonLinks = getNestApiCommonDocumentLinks(baseUrl, request);
 
   const { self } = commonLinks;
   const paginationLinks = getNestApiPaginationLinks(request, self, total);

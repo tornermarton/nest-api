@@ -3,7 +3,7 @@ export interface PassportUser {
 }
 
 export interface PassportDevice {
-  agent: string;
+  agent?: string;
 }
 
 export interface Passport {

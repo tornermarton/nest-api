@@ -1,5 +1,10 @@
 import { Type } from '@nestjs/common';
 
+export type BaseUrl = {
+  url: { scheme: string; host: string; port: number };
+  prefix: string;
+};
+
 export class EntityResponse<T = unknown> {
   constructor(public readonly data: T, public readonly included?: unknown[]) {}
 }

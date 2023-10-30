@@ -18,6 +18,7 @@ import { HttpAdapterHost } from '@nestjs/core/helpers/http-adapter-host';
 import { Request, Response } from 'express';
 import { getReasonPhrase } from 'http-status-codes';
 
+import { BaseUrl } from './models';
 import { getNestApiCommonDocumentLinks } from './utils';
 import {
   NestApiDocumentMetaInterface,
@@ -29,7 +30,8 @@ import {
 import { isNotNullOrUndefined } from '../core';
 
 type ApiResponseExceptionFilterOptions = {
-  exclude: { path: string; method: RequestMethod }[];
+  baseUrl: BaseUrl;
+  exclude?: { path: string; method: RequestMethod }[];
 };
 
 @Catch()
@@ -37,7 +39,7 @@ export class ApiResponseExceptionFilter<
   T = unknown,
 > extends BaseExceptionFilter<T> {
   public static forRoot<T = unknown>(
-    options?: ApiResponseExceptionFilterOptions,
+    options: ApiResponseExceptionFilterOptions,
   ): FactoryProvider {
     return {
       provide: APP_FILTER,
@@ -54,7 +56,7 @@ export class ApiResponseExceptionFilter<
   constructor(
     protected override readonly httpAdapterHost: HttpAdapterHost,
     private readonly logger: Logger,
-    private readonly options?: ApiResponseExceptionFilterOptions,
+    private readonly options: ApiResponseExceptionFilterOptions,
   ) {
     super();
   }
@@ -118,6 +120,8 @@ export class ApiResponseExceptionFilter<
   }
 
   public override catch(exception: T, host: ArgumentsHost): void {
+    const { baseUrl, exclude } = this.options;
+
     const adapter: AbstractHttpAdapter = this.httpAdapterHost.httpAdapter;
     const request: Request = host.switchToHttp().getRequest<Request>();
     const response: Response = host.switchToHttp().getResponse<Response>();
@@ -127,8 +131,8 @@ export class ApiResponseExceptionFilter<
       request,
     ) as RequestMethod;
 
-    if (isNotNullOrUndefined(this.options)) {
-      for (const e of this.options.exclude) {
+    if (isNotNullOrUndefined(exclude)) {
+      for (const e of exclude) {
         if (
           e.path === url &&
           (e.method === method || e.method === RequestMethod.ALL)
@@ -152,7 +156,7 @@ export class ApiResponseExceptionFilter<
     );
 
     const links: NestApiErrorDocumentLinksInterface =
-      getNestApiCommonDocumentLinks(request);
+      getNestApiCommonDocumentLinks(baseUrl, request);
 
     const body: NestApiErrorDocumentInterface = { meta, errors, links };
 

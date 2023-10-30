@@ -18,6 +18,7 @@ import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 
 import {
+  BaseUrl,
   EntitiesResponse,
   EntityResponse,
   RelatedEntitiesResponse,
@@ -47,7 +48,8 @@ import {
 import { isNotNullOrUndefined, isNullOrUndefined } from '../core';
 
 type ApiResponseInterceptorOptions = {
-  exclude: { path: string; method: RequestMethod }[];
+  baseUrl: BaseUrl;
+  exclude?: { path: string; method: RequestMethod }[];
 };
 
 export class NestApiEntityResourceBuilder {
@@ -155,7 +157,7 @@ export class ApiResponseInterceptor
   implements NestInterceptor<unknown, NestApiResponseDocumentInterface>
 {
   public static forRoot(
-    options?: ApiResponseInterceptorOptions,
+    options: ApiResponseInterceptorOptions,
   ): FactoryProvider {
     return {
       provide: APP_INTERCEPTOR,
@@ -170,7 +172,7 @@ export class ApiResponseInterceptor
 
   constructor(
     private readonly httpAdapterHost: HttpAdapterHost,
-    private readonly options?: ApiResponseInterceptorOptions,
+    private readonly options: ApiResponseInterceptorOptions,
   ) {}
 
   // eslint-disable-next-line @typescript-eslint/ban-types
@@ -249,6 +251,8 @@ export class ApiResponseInterceptor
     context: ExecutionContext,
     next: CallHandler,
   ): Observable<NestApiResponseDocumentInterface> {
+    const { baseUrl, exclude } = this.options;
+
     const adapter: AbstractHttpAdapter = this.httpAdapterHost.httpAdapter;
     const request: Request = context.switchToHttp().getRequest<Request>();
     const response: Response = context.switchToHttp().getResponse<Response>();
@@ -258,8 +262,8 @@ export class ApiResponseInterceptor
       request,
     ) as RequestMethod;
 
-    if (isNotNullOrUndefined(this.options)) {
-      for (const e of this.options.exclude) {
+    if (isNotNullOrUndefined(exclude)) {
+      for (const e of exclude) {
         if (
           e.path === url &&
           (e.method === method || e.method === RequestMethod.ALL)
@@ -294,7 +298,10 @@ export class ApiResponseInterceptor
             return {
               meta: meta,
               data: this.transformEntity(r.data),
-              links: getNestApiEntityDocumentLinks(request),
+              links: getNestApiEntityDocumentLinks(
+                this.options?.baseUrl,
+                request,
+              ),
               included: r.included?.map((e) =>
                 // eslint-disable-next-line @typescript-eslint/ban-types
                 this.transformEntity(e as Function),
@@ -307,7 +314,7 @@ export class ApiResponseInterceptor
             return {
               meta: meta,
               data: r.data.map((e) => this.transformEntity(e)),
-              links: getNestApiEntitiesDocumentLinks(request, r.total),
+              links: getNestApiEntitiesDocumentLinks(baseUrl, request, r.total),
               paging: getNestApiDocumentPaging(request, r.total),
               included: r.included?.map((e) =>
                 // eslint-disable-next-line @typescript-eslint/ban-types
@@ -318,7 +325,7 @@ export class ApiResponseInterceptor
             return {
               meta: meta,
               data: this.transformRelationship(r.type, r.data),
-              links: getNestApiRelationshipDocumentLinks(request),
+              links: getNestApiRelationshipDocumentLinks(baseUrl, request),
             };
           } else if (r instanceof RelationshipsResponse) {
             return {
@@ -330,7 +337,7 @@ export class ApiResponseInterceptor
           } else {
             return {
               meta: meta,
-              links: getNestApiCommonDocumentLinks(request),
+              links: getNestApiCommonDocumentLinks(baseUrl, request),
             };
           }
         },
