@@ -1,21 +1,36 @@
-import { RequestMethod } from '@nestjs/common';
-import { AbstractHttpAdapter } from '@nestjs/core';
+import { HttpServer, RequestMethod } from '@nestjs/common';
 import { Request } from 'express';
+
+import { isNullOrUndefined } from '../core';
 
 export type RequestDefinition = { path: string; method: RequestMethod };
 
 export class RequestMatcher {
   constructor(
-    private readonly adapter: AbstractHttpAdapter,
+    private readonly server: HttpServer,
     private readonly definitions: RequestDefinition[],
   ) {}
 
   private getRequestUrl(request: Request): string {
-    return this.adapter.getRequestUrl(request) as string;
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    if (isNullOrUndefined(this.server.getRequestUrl)) {
+      return request['url'];
+    }
+
+    return this.server.getRequestUrl(request);
+  }
+
+  private getRequestMethodString(request: Request): string {
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    if (isNullOrUndefined(this.server.getRequestMethod)) {
+      return request['method'];
+    }
+
+    return this.server.getRequestMethod(request);
   }
 
   private getRequestMethod(request: Request): RequestMethod {
-    const method: string = this.adapter.getRequestMethod(request) as string;
+    const method: string = this.getRequestMethodString(request);
 
     switch (method) {
       case 'GET':

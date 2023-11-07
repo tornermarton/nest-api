@@ -45,9 +45,12 @@ import {
 } from '../api';
 import { isNullOrUndefined } from '../core';
 
+type RequestMatcherOptions = {
+  exclude?: RequestDefinition[];
+};
+
 type ApiResponseInterceptorOptions = {
   baseUrl: BaseUrl;
-  exclude?: RequestDefinition[];
 };
 
 @Injectable()
@@ -55,7 +58,7 @@ export class ApiResponseInterceptor<T = unknown>
   implements NestInterceptor<T, NestApiResponseDocumentInterface | T>
 {
   public static forRoot(
-    options: ApiResponseInterceptorOptions,
+    options: ApiResponseInterceptorOptions & RequestMatcherOptions,
   ): FactoryProvider {
     return {
       provide: APP_INTERCEPTOR,
@@ -165,7 +168,7 @@ export class ApiResponseInterceptor<T = unknown>
 
     return next.handle().pipe(
       map((r) => {
-        const status: number = response.statusCode as number;
+        const status: number = response.statusCode;
         const timestamp: Date = new Date();
         const reason: string = getReasonPhrase(status);
 

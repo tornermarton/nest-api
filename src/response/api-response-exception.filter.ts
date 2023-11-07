@@ -5,6 +5,7 @@ import {
   Catch,
   FactoryProvider,
   HttpException,
+  HttpServer,
   HttpStatus,
   Logger,
 } from '@nestjs/common';
@@ -28,9 +29,12 @@ import {
   NestApiGenericErrorInterface,
 } from '../api';
 
+type RequestMatcherOptions = {
+  exclude?: RequestDefinition[];
+};
+
 type ApiResponseExceptionFilterOptions = {
   baseUrl: BaseUrl;
-  exclude?: RequestDefinition[];
 };
 
 @Catch()
@@ -38,7 +42,7 @@ export class ApiResponseExceptionFilter<
   T = unknown,
 > extends BaseExceptionFilter<T> {
   public static forRoot<T = unknown>(
-    options: ApiResponseExceptionFilterOptions,
+    options: ApiResponseExceptionFilterOptions & RequestMatcherOptions,
   ): FactoryProvider {
     return {
       provide: APP_FILTER,
@@ -59,7 +63,7 @@ export class ApiResponseExceptionFilter<
   private readonly logger: Logger = new Logger(ApiResponseExceptionFilter.name);
 
   constructor(
-    private readonly adapter: AbstractHttpAdapter,
+    private readonly server: HttpServer,
     private readonly matcher: RequestMatcher,
     private readonly options: ApiResponseExceptionFilterOptions,
   ) {
@@ -152,6 +156,6 @@ export class ApiResponseExceptionFilter<
 
     const body: NestApiErrorDocumentInterface = { meta, errors, links };
 
-    this.adapter.reply(response, body, status);
+    this.server.reply(response, body, status);
   }
 }
