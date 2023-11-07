@@ -7,7 +7,6 @@ import {
   HttpException,
   HttpStatus,
   Logger,
-  RequestMethod,
 } from '@nestjs/common';
 import {
   AbstractHttpAdapter,
@@ -19,6 +18,7 @@ import { Request, Response } from 'express';
 import { getReasonPhrase } from 'http-status-codes';
 
 import { BaseUrl } from './models';
+import { RequestDefinition, RequestMatcher } from './request-matcher';
 import { getNestApiCommonDocumentLinks } from './utils';
 import {
   NestApiDocumentMetaInterface,
@@ -27,11 +27,10 @@ import {
   NestApiErrorInterface,
   NestApiGenericErrorInterface,
 } from '../api';
-import { isNotNullOrUndefined } from '../core';
 
 type ApiResponseExceptionFilterOptions = {
   baseUrl: BaseUrl;
-  exclude?: { path: string; method: RequestMethod }[];
+  exclude?: RequestDefinition[];
 };
 
 @Catch()
@@ -47,14 +46,25 @@ export class ApiResponseExceptionFilter<
         httpAdapterHost: HttpAdapterHost,
         logger: Logger,
       ): ApiResponseExceptionFilter<T> => {
-        return new ApiResponseExceptionFilter(httpAdapterHost, logger, options);
+        const adapter: AbstractHttpAdapter = httpAdapterHost.httpAdapter;
+        const exclude: RequestDefinition[] = options.exclude ?? [];
+
+        const matcher: RequestMatcher = new RequestMatcher(adapter, exclude);
+
+        return new ApiResponseExceptionFilter(
+          adapter,
+          matcher,
+          logger,
+          options,
+        );
       },
       inject: [HttpAdapterHost, Logger],
     };
   }
 
   constructor(
-    protected override readonly httpAdapterHost: HttpAdapterHost,
+    private readonly adapter: AbstractHttpAdapter,
+    private readonly matcher: RequestMatcher,
     private readonly logger: Logger,
     private readonly options: ApiResponseExceptionFilterOptions,
   ) {
@@ -120,26 +130,13 @@ export class ApiResponseExceptionFilter<
   }
 
   public override catch(exception: T, host: ArgumentsHost): void {
-    const { baseUrl, exclude } = this.options;
+    const { baseUrl } = this.options;
 
-    const adapter: AbstractHttpAdapter = this.httpAdapterHost.httpAdapter;
     const request: Request = host.switchToHttp().getRequest<Request>();
     const response: Response = host.switchToHttp().getResponse<Response>();
 
-    const url: string = adapter.getRequestUrl(request) as string;
-    const method: RequestMethod = adapter.getRequestMethod(
-      request,
-    ) as RequestMethod;
-
-    if (isNotNullOrUndefined(exclude)) {
-      for (const e of exclude) {
-        if (
-          e.path === url &&
-          (e.method === method || e.method === RequestMethod.ALL)
-        ) {
-          return super.catch(exception, host);
-        }
-      }
+    if (this.matcher.match(request)) {
+      return super.catch(exception, host);
     }
 
     this.log(exception);
@@ -160,6 +157,6 @@ export class ApiResponseExceptionFilter<
 
     const body: NestApiErrorDocumentInterface = { meta, errors, links };
 
-    adapter.reply(response, body, status);
+    this.adapter.reply(response, body, status);
   }
 }

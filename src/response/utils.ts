@@ -19,17 +19,15 @@ export function isNotEmptyEntityResponse<T>(
   return isNotNullOrUndefined(response.data);
 }
 
+export function getPageDto(request: Request): PageDto {
+  return (request.query['page'] as PageDto | undefined) ?? new PageDto();
+}
+
 export function getNestApiDocumentPaging(
   request: Request,
   total?: number,
 ): NestApiDocumentPaging {
-  const defaults = {
-    offset: PageDto.DEFAULT_OFFSET,
-    limit: PageDto.DEFAULT_LIMIT,
-  };
-  const page = request.query.page ?? defaults;
-
-  return { ...page, total };
+  return { ...getPageDto(request), total };
 }
 
 function createBaseUrlString(baseUrl: BaseUrl): string {
@@ -104,7 +102,7 @@ function getNestApiPaginationLinks(
       ignoreQueryPrefix: true,
       comma: true,
     },
-  );
+  ) as unknown as Mutable<IQueryEntitiesDto<unknown, unknown, never>>;
 
   const paging: NestApiDocumentPaging = getNestApiDocumentPaging(
     request,
