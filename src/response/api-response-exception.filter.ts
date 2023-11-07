@@ -44,28 +44,23 @@ export class ApiResponseExceptionFilter<
       provide: APP_FILTER,
       useFactory: (
         httpAdapterHost: HttpAdapterHost,
-        logger: Logger,
       ): ApiResponseExceptionFilter<T> => {
         const adapter: AbstractHttpAdapter = httpAdapterHost.httpAdapter;
         const exclude: RequestDefinition[] = options.exclude ?? [];
 
         const matcher: RequestMatcher = new RequestMatcher(adapter, exclude);
 
-        return new ApiResponseExceptionFilter(
-          adapter,
-          matcher,
-          logger,
-          options,
-        );
+        return new ApiResponseExceptionFilter(adapter, matcher, options);
       },
-      inject: [HttpAdapterHost, Logger],
+      inject: [HttpAdapterHost],
     };
   }
+
+  private readonly logger: Logger = new Logger(ApiResponseExceptionFilter.name);
 
   constructor(
     private readonly adapter: AbstractHttpAdapter,
     private readonly matcher: RequestMatcher,
-    private readonly logger: Logger,
     private readonly options: ApiResponseExceptionFilterOptions,
   ) {
     super();
