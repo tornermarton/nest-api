@@ -30,19 +30,12 @@ export function getNestApiDocumentPaging(
   return { ...getPageDto(request), total };
 }
 
-function createBaseUrlString(baseUrl: BaseUrl): string {
-  if (baseUrl.url.port === 80 || baseUrl.url.port === 443) {
-    return `${baseUrl.url.scheme}://${baseUrl.url.host}`;
+function getSelfLink(baseUrl: BaseUrl, request: Request): string {
+  if (baseUrl.port === 80 || baseUrl.port === 443) {
+    return `${baseUrl.scheme}://${baseUrl.host}${request.originalUrl}`;
   }
 
-  return `${baseUrl.url.scheme}://${baseUrl.url.host}:${baseUrl.url.port}`;
-}
-
-function getSelfLink(baseUrl: BaseUrl, request: Request): string {
-  const url: string = createBaseUrlString(baseUrl);
-
-  // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-  return `${url}${request.originalUrl}`;
+  return `${baseUrl.scheme}://${baseUrl.host}:${baseUrl.port}${request.originalUrl}`;
 }
 
 export function getNestApiCommonDocumentLinks(
