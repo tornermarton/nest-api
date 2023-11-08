@@ -3,12 +3,12 @@ import { Request } from 'express';
 
 import { isNullOrUndefined } from '../core';
 
-export type RequestDefinition = { path: string; method: RequestMethod };
+export type EndpointDefinition = { path: string; method: RequestMethod };
 
-export class RequestMatcher {
+export class EndpointMatcher {
   constructor(
     private readonly server: HttpServer,
-    private readonly definitions: RequestDefinition[],
+    private readonly definitions: EndpointDefinition[],
   ) {}
 
   private getRequestUrl(request: Request): string {
@@ -53,7 +53,7 @@ export class RequestMatcher {
   }
 
   private isMatch(
-    definition: RequestDefinition,
+    definition: EndpointDefinition,
     url: string,
     method: RequestMethod,
   ): boolean {

@@ -6,7 +6,6 @@ import {
   IntersectionType,
   PickType,
 } from '@nestjs/swagger';
-import { ReferenceObject } from '@nestjs/swagger/dist/interfaces/open-api-spec.interface';
 import { Type as TransformType } from 'class-transformer';
 import {
   ArrayNotEmpty,
@@ -389,7 +388,7 @@ export function NestApiEntityResponseDocument(type: Type): Type {
 
   const metadata: NestApiEntityMetadata = getEntityMetadata(type.prototype);
   if (metadata.fields.relationships.length > 0) {
-    const includedRefs: ReferenceObject[] = metadata.fields.relationships
+    const includedRefs: { $ref: string }[] = metadata.fields.relationships
       .map(({ descriptor }) => descriptor)
       .map(({ related }) => related())
       .map((t) => ({ $ref: getSchemaPath(t) }));
@@ -430,7 +429,7 @@ export function NestApiRelatedEntityResponseDocument(
 
   const metadata: NestApiEntityMetadata = getEntityMetadata(type.prototype);
   if (metadata.fields.relationships.length > 0) {
-    const includedRefs: ReferenceObject[] = metadata.fields.relationships
+    const includedRefs: { $ref: string }[] = metadata.fields.relationships
       .map(({ descriptor }) => descriptor)
       .map(({ related }) => related())
       .map((t) => ({ $ref: getSchemaPath(t) }));
@@ -474,7 +473,7 @@ export function NestApiEntitiesResponseDocument(type: Type): Type {
 
   const metadata: NestApiEntityMetadata = getEntityMetadata(type.prototype);
   if (metadata.fields.relationships.length > 0) {
-    const includedRefs: ReferenceObject[] = metadata.fields.relationships
+    const includedRefs: { $ref: string }[] = metadata.fields.relationships
       .map(({ descriptor }) => descriptor)
       .map(({ related }) => related())
       .map((t) => ({ $ref: getSchemaPath(t) }));

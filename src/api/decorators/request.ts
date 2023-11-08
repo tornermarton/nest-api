@@ -14,7 +14,12 @@ import {
 } from '@nestjs/swagger';
 import { Request } from 'express';
 
-import { Entity, isNotNullOrUndefined, isNullOrUndefined } from '../../core';
+import {
+  Entity,
+  InvalidDecoratedPropertyException,
+  isNotNullOrUndefined,
+  isNullOrUndefined,
+} from '../../core';
 import { RelationshipDescriptor } from '../../repository';
 import {
   NestApiEntityRequestBodyTransformationPipe,
@@ -60,8 +65,9 @@ export const NestApiRequestQuery = (): ParameterDecorator => {
       Object.getOwnPropertyDescriptor(target, propertyKey);
 
     if (isNullOrUndefined(descriptor)) {
-      // TODO: proper error
-      throw new Error('Could not get property descriptor');
+      throw new InvalidDecoratedPropertyException(
+        'Could not get property descriptor',
+      );
     }
 
     const key: string = 'design:paramtypes';

@@ -6,7 +6,13 @@ import {
   NEST_API_ENTITY_FIELDS_METADATA_KEY,
   NEST_API_QUERY_METADATA_KEY,
 } from './constants';
-import { Entity, isNotNullOrUndefined, isNullOrUndefined } from '../core';
+import {
+  Entity,
+  isNotNullOrUndefined,
+  isNullOrUndefined,
+  UnknownEntityException,
+  UnknownRelationshipException,
+} from '../core';
 import { RelationshipDescriptor } from '../repository';
 
 export type NestApiEntityFieldsMetadata = {
@@ -44,8 +50,7 @@ export function getEntityMetadata(target: Function): NestApiEntityMetadata {
   );
 
   if (isNullOrUndefined(reflected)) {
-    // TODO: lib error
-    throw new Error(
+    throw new UnknownEntityException(
       `Target [${target.name}] must be decorated  with @NestApiEntity()`,
     );
   }
@@ -83,6 +88,7 @@ export function setEntityFieldsMetadata(
 }
 
 export function getInverseRelationshipDescriptor<TRelated extends Entity>({
+  name,
   related,
   inverse,
 }: RelationshipDescriptor<TRelated>): RelationshipDescriptor<any> | null {
@@ -90,13 +96,15 @@ export function getInverseRelationshipDescriptor<TRelated extends Entity>({
     return null;
   }
 
-  const metadata = getEntityMetadata(related().prototype);
+  const type: Type = related();
+  const metadata = getEntityMetadata(type.prototype);
   const { relationships } = metadata.fields;
   const relationship = relationships.find(({ name }) => name === inverse);
 
   if (isNullOrUndefined(relationship)) {
-    // TODO: error
-    throw new Error('Could not find inverse relationship');
+    throw new UnknownRelationshipException(
+      `Could not find inverse relationship [${inverse}] on [${type.name}] for relationship [${name}]`,
+    );
   }
 
   return relationship.descriptor;
@@ -125,7 +133,9 @@ export function getRelationshipDescriptorByKey<
     metadata.fields.relationships.find(({ name }) => name === key)?.descriptor;
 
   if (isNullOrUndefined(descriptor)) {
-    throw new Error(`Could not find relationship [${key}] in [${type.name}]`);
+    throw new UnknownRelationshipException(
+      `Could not find relationship [${key}] on [${type.name}]`,
+    );
   }
 
   return descriptor;

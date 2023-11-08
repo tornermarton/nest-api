@@ -16,6 +16,7 @@ import { getReasonPhrase } from 'http-status-codes';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 
+import { EndpointDefinition, EndpointMatcher } from './endpoint-matcher';
 import {
   BaseUrl,
   EntitiesResponse,
@@ -26,7 +27,6 @@ import {
   RelationshipResponse,
   RelationshipsResponse,
 } from './models';
-import { RequestDefinition, RequestMatcher } from './request-matcher';
 import {
   getNestApiCommonDocumentLinks,
   getNestApiDocumentPaging,
@@ -43,10 +43,10 @@ import {
   NestApiResourceInterface,
   NestApiResponseDocumentInterface,
 } from '../api';
-import { isNullOrUndefined } from '../core';
+import { isNullOrUndefined, MissingIdFieldException } from '../core';
 
 type RequestMatcherOptions = {
-  exclude?: RequestDefinition[];
+  exclude?: EndpointDefinition[];
 };
 
 type ApiResponseInterceptorOptions = {
@@ -66,9 +66,9 @@ export class ApiResponseInterceptor<T = unknown>
         httpAdapterHost: HttpAdapterHost,
       ): ApiResponseInterceptor => {
         const adapter: AbstractHttpAdapter = httpAdapterHost.httpAdapter;
-        const exclude: RequestDefinition[] = options.exclude ?? [];
+        const exclude: EndpointDefinition[] = options.exclude ?? [];
 
-        const matcher: RequestMatcher = new RequestMatcher(adapter, exclude);
+        const matcher: EndpointMatcher = new EndpointMatcher(adapter, exclude);
 
         return new ApiResponseInterceptor(matcher, options);
       },
@@ -77,7 +77,7 @@ export class ApiResponseInterceptor<T = unknown>
   }
 
   constructor(
-    private readonly matcher: RequestMatcher,
+    private readonly matcher: EndpointMatcher,
     private readonly options: ApiResponseInterceptorOptions,
   ) {}
 
@@ -92,8 +92,7 @@ export class ApiResponseInterceptor<T = unknown>
     const metadata: NestApiEntityMetadata = getEntityMetadata(entity);
 
     if (isNullOrUndefined(metadata.fields.id)) {
-      // TODO: lib error
-      throw new Error(
+      throw new MissingIdFieldException(
         `Response entity [${entity.name}] must have an ID property decorated with @NestApiEntityId()`,
       );
     }

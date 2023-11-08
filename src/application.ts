@@ -3,26 +3,29 @@ import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, OpenAPIObject, SwaggerModule } from '@nestjs/swagger';
 
-import {
-  createApplicationLogger,
-  createGlobalApiPrefix,
-  queryParser,
-} from './core';
+import { createApplicationLogger, queryParser } from './core';
 import {
   ApiResponseExceptionFilter,
   ApiResponseInterceptor,
   BaseUrl,
 } from './response';
-import { RequestDefinition, RequestMatcher } from './response/request-matcher';
+import {
+  EndpointDefinition,
+  EndpointMatcher,
+} from './response/endpoint-matcher';
 
 type ApplicationOptions = {
   title: string;
   name: string;
   version: string;
   baseUrl: BaseUrl;
-  exclude?: RequestDefinition[];
+  exclude?: EndpointDefinition[];
   debug: boolean;
 };
+
+function createGlobalApiPrefix(name: string, version: string): string {
+  return `/api/rest/${name}/v${version}`;
+}
 
 function createBaseUrlString(baseUrl: BaseUrl): string {
   if (baseUrl.port === 80 || baseUrl.port === 443) {
@@ -46,7 +49,7 @@ export async function createApplication(
   app.setGlobalPrefix(prefix, { exclude });
 
   const server: HttpServer = app.getHttpAdapter();
-  const matcher: RequestMatcher = new RequestMatcher(server, exclude ?? []);
+  const matcher: EndpointMatcher = new EndpointMatcher(server, exclude ?? []);
 
   const interceptor: ApiResponseInterceptor = new ApiResponseInterceptor(
     matcher,

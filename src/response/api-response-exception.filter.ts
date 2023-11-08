@@ -18,8 +18,8 @@ import { HttpAdapterHost } from '@nestjs/core/helpers/http-adapter-host';
 import { Request, Response } from 'express';
 import { getReasonPhrase } from 'http-status-codes';
 
+import { EndpointDefinition, EndpointMatcher } from './endpoint-matcher';
 import { BaseUrl } from './models';
-import { RequestDefinition, RequestMatcher } from './request-matcher';
 import { getNestApiCommonDocumentLinks } from './utils';
 import {
   NestApiDocumentMetaInterface,
@@ -30,7 +30,7 @@ import {
 } from '../api';
 
 type RequestMatcherOptions = {
-  exclude?: RequestDefinition[];
+  exclude?: EndpointDefinition[];
 };
 
 type ApiResponseExceptionFilterOptions = {
@@ -50,9 +50,9 @@ export class ApiResponseExceptionFilter<
         httpAdapterHost: HttpAdapterHost,
       ): ApiResponseExceptionFilter<T> => {
         const adapter: AbstractHttpAdapter = httpAdapterHost.httpAdapter;
-        const exclude: RequestDefinition[] = options.exclude ?? [];
+        const exclude: EndpointDefinition[] = options.exclude ?? [];
 
-        const matcher: RequestMatcher = new RequestMatcher(adapter, exclude);
+        const matcher: EndpointMatcher = new EndpointMatcher(adapter, exclude);
 
         return new ApiResponseExceptionFilter(adapter, matcher, options);
       },
@@ -64,7 +64,7 @@ export class ApiResponseExceptionFilter<
 
   constructor(
     private readonly server: HttpServer,
-    private readonly matcher: RequestMatcher,
+    private readonly matcher: EndpointMatcher,
     private readonly options: ApiResponseExceptionFilterOptions,
   ) {
     super();

@@ -22,6 +22,7 @@ import { MongooseRelationship } from './mongoose-relationship';
 import { filterDtoToQuery } from './utils';
 import {
   Entity,
+  InvalidIdSetException,
   isNotNullOrUndefined,
   isNullOrUndefined,
   Relationship,
@@ -360,8 +361,7 @@ export class MongooseRelationshipRepository<
           }
 
           if (id2set.length !== 1) {
-            // TODO: error
-            throw new Error(
+            throw new InvalidIdSetException(
               'Cannot create [toOne] relationship with multiple id2 values',
             );
           }

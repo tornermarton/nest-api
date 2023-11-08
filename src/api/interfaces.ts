@@ -174,4 +174,6 @@ export type NestApiResponseDocumentInterface =
   | NestApiEmptyDocumentInterface
   | NestApiEntityResponseDocumentInterface
   | NestApiEntitiesResponseDocumentInterface
+  | NestApiRelationshipResponseDocumentInterface
+  | NestApiRelationshipsResponseDocumentInterface
   | NestApiErrorDocumentInterface;

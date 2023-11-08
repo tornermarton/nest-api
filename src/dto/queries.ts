@@ -16,8 +16,8 @@ import {
   NestApiQueryMetadata,
   NestApiQueryParameter,
   setQueryMetadata,
-} from '../../api';
-import { isNotNullOrUndefined } from '../../core';
+} from '../api';
+import { isNotNullOrUndefined } from '../core';
 
 // TODO: typing based on function input
 export interface IQueryEntityDto<

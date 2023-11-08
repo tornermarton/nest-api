@@ -1,7 +1,7 @@
 import { ApiProperty, ApiPropertyOptions } from '@nestjs/swagger';
 import { Expose } from 'class-transformer';
 
-import { Entity, isNullOrUndefined } from '../../core';
+import { Entity, isNullOrUndefined, MissingIdFieldException } from '../../core';
 import { RelationshipDescriptor } from '../../repository';
 import {
   getEntityFieldsMetadata,
@@ -17,8 +17,7 @@ export function NestApiEntity(name: string): ClassDecorator {
       getEntityFieldsMetadata(target.prototype);
 
     if (isNullOrUndefined(fieldsMetadata.id)) {
-      // TODO: lib error
-      throw new Error(
+      throw new MissingIdFieldException(
         `Entity [${name}] must have an ID property decorated with @NestApiEntityId()`,
       );
     }

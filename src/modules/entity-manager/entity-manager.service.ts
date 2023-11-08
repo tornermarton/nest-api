@@ -6,7 +6,12 @@ import {
   EntityManagerRelationshipDefinition,
 } from './entity-manager';
 import { getEntityMetadata, NestApiEntityMetadata } from '../../api';
-import { Entity, isNullOrUndefined } from '../../core';
+import {
+  Entity,
+  isNullOrUndefined,
+  UnknownEntityDefinitionException,
+  UnknownRelationshipDefinitionException,
+} from '../../core';
 
 @Injectable()
 export class EntityManagerService {
@@ -34,8 +39,9 @@ export class EntityManagerService {
       this.entities.get(type.name);
 
     if (isNullOrUndefined(entity)) {
-      // TODO: error
-      throw new Error(`Could not find entity [${type.name}]`);
+      throw new UnknownEntityDefinitionException(
+        `Could not find entity definition [${type.name}]`,
+      );
     }
 
     const metadata: NestApiEntityMetadata = getEntityMetadata(type.prototype);
@@ -45,8 +51,9 @@ export class EntityManagerService {
         const relationship = this.relationships.get(descriptor.name);
 
         if (isNullOrUndefined(relationship)) {
-          // TODO: error
-          throw new Error(`Could not find relationship [${descriptor.name}]`);
+          throw new UnknownRelationshipDefinitionException(
+            `Could not find relationship definition [${descriptor.name}]`,
+          );
         }
 
         acc[name] = relationship;

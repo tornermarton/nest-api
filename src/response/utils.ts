@@ -27,7 +27,9 @@ export function getNestApiDocumentPaging(
   request: Request,
   total?: number,
 ): NestApiDocumentPaging {
-  return { ...getPageDto(request), total };
+  const dto: PageDto = getPageDto(request);
+
+  return { ...dto, total };
 }
 
 function getSelfLink(baseUrl: BaseUrl, request: Request): string {
