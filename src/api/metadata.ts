@@ -18,11 +18,9 @@ import { RelationshipDescriptor } from '../repository';
 export type NestApiEntityFieldsMetadata = {
   id?: { name: string; openapi: ApiPropertyOptions };
   attributes: { name: string; openapi: ApiPropertyOptions }[];
-  // eslint-disable-next-line @typescript-eslint/ban-types
   relationships: {
     name: string;
-    // TODO: any might not be the best here
-    descriptor: RelationshipDescriptor<any>;
+    descriptor: RelationshipDescriptor;
     openapi: ApiPropertyOptions;
   }[];
   meta: { name: string; openapi: ApiPropertyOptions }[];
@@ -44,18 +42,18 @@ export type NestApiQueryMetadata = {
 
 // eslint-disable-next-line @typescript-eslint/ban-types
 export function getEntityMetadata(target: Function): NestApiEntityMetadata {
-  const reflected: NestApiEntityMetadata | undefined = Reflect.getMetadata(
+  const metadata: NestApiEntityMetadata | undefined = Reflect.getMetadata(
     NEST_API_ENTITY_METADATA_KEY,
     target,
   );
 
-  if (isNullOrUndefined(reflected)) {
+  if (isNullOrUndefined(metadata)) {
     throw new UnknownEntityException(
       `Target [${target.name}] must be decorated  with @NestApiEntity()`,
     );
   }
 
-  return reflected;
+  return metadata;
 }
 export function setEntityMetadata(
   // eslint-disable-next-line @typescript-eslint/ban-types
@@ -69,14 +67,14 @@ export function getEntityFieldsMetadata(
   // eslint-disable-next-line @typescript-eslint/ban-types
   target: Object,
 ): Partial<NestApiEntityFieldsMetadata> {
-  const reflected: Partial<NestApiEntityFieldsMetadata> | undefined =
+  const metadata: Partial<NestApiEntityFieldsMetadata> | undefined =
     Reflect.getMetadata(NEST_API_ENTITY_FIELDS_METADATA_KEY, target);
 
-  if (isNullOrUndefined(reflected)) {
+  if (isNullOrUndefined(metadata)) {
     return {};
   }
 
-  return reflected;
+  return metadata;
 }
 
 export function setEntityFieldsMetadata(
@@ -126,10 +124,10 @@ export function getRelationshipDescriptors<TEntity extends Entity>(
 export function getRelationshipDescriptorByKey<
   TEntity extends Entity,
   TKey extends Extract<keyof TEntity, string>,
->(type: Type<TEntity>, key: TKey): RelationshipDescriptor<any> {
+>(type: Type<TEntity>, key: TKey): RelationshipDescriptor {
   const metadata: NestApiEntityMetadata = getEntityMetadata(type.prototype);
 
-  const descriptor: RelationshipDescriptor<any> | undefined =
+  const descriptor: RelationshipDescriptor | undefined =
     metadata.fields.relationships.find(({ name }) => name === key)?.descriptor;
 
   if (isNullOrUndefined(descriptor)) {
@@ -143,16 +141,16 @@ export function getRelationshipDescriptorByKey<
 
 // eslint-disable-next-line @typescript-eslint/ban-types
 export function getQueryMetadata(target: Object): NestApiQueryMetadata {
-  const reflected: NestApiQueryMetadata | undefined = Reflect.getMetadata(
+  const metadata: NestApiQueryMetadata | undefined = Reflect.getMetadata(
     NEST_API_QUERY_METADATA_KEY,
     target,
   );
 
-  if (isNullOrUndefined(reflected)) {
+  if (isNullOrUndefined(metadata)) {
     return { parameters: [] };
   }
 
-  return reflected;
+  return metadata;
 }
 export function setQueryMetadata(
   // eslint-disable-next-line @typescript-eslint/ban-types

@@ -15,6 +15,7 @@ import {
   MongooseHealthIndicator,
 } from '@nestjs/terminus';
 import { catchError, from, Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 
 import { Health } from './schemas/health.schema';
 import {
@@ -22,7 +23,7 @@ import {
   NestApiErrorInterface,
   NestApiServiceUnavailableResponse,
 } from '../../api';
-import { isNotNullOrUndefined } from '../../core';
+import { isNotNullOrUndefined, uuid } from '../../core';
 
 @ApiTags('health')
 @Controller('health')
@@ -37,7 +38,7 @@ export class HealthController {
   @NestApiEntityResponse(Health)
   @NestApiServiceUnavailableResponse()
   @HealthCheck()
-  public check(): Observable<HealthCheckResult> {
+  public check(): Observable<Health> {
     return from(
       this.health.check([
         (): Promise<HealthIndicatorResult> =>
@@ -49,6 +50,18 @@ export class HealthController {
           this.mongoose.pingCheck('mongodb'),
       ]),
     ).pipe(
+      map((result) => {
+        const now: Date = new Date();
+
+        return {
+          id: uuid(),
+          ...result,
+          createdAt: now,
+          createdBy: '',
+          updatedAt: now,
+          updatedBy: '',
+        };
+      }),
       catchError((error) => {
         if (!(error instanceof HttpException)) {
           throw error;

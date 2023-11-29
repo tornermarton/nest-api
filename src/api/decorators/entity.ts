@@ -103,7 +103,7 @@ export function NestApiRelationshipField<TRelated extends Entity>(
         ...(fieldsMetadata.relationships ?? []),
         {
           name: propertyKey.toString(),
-          descriptor: descriptor,
+          descriptor: descriptor as RelationshipDescriptor,
           openapi: openapi,
         },
       ],

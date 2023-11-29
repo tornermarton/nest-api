@@ -24,11 +24,11 @@ import {
   NestApiRelationshipsResponseDocument,
 } from '../models';
 
-export const NestApiEntityResponse = <TModel extends Type>(
-  model: TModel,
+export const NestApiEntityResponse = <TEntity extends Entity>(
+  type: Type<TEntity>,
   options?: ApiResponseOptions,
 ): MethodDecorator => {
-  const document: Type = NestApiEntityResponseDocument(model);
+  const document: Type = NestApiEntityResponseDocument(type);
 
   return applyDecorators(
     ApiExtraModels(document),
@@ -40,11 +40,11 @@ export const NestApiEntityResponse = <TModel extends Type>(
   );
 };
 
-export const NestApiEntitiesResponse = <TModel extends Type>(
-  model: TModel,
+export const NestApiEntitiesResponse = <TEntity extends Entity>(
+  type: Type<TEntity>,
   options?: ApiResponseOptions,
 ): MethodDecorator => {
-  const document: Type = NestApiEntitiesResponseDocument(model);
+  const document: Type = NestApiEntitiesResponseDocument(type);
 
   return applyDecorators(
     ApiExtraModels(document),
@@ -60,18 +60,18 @@ export const NestApiRelatedEntityResponse = <
   TEntity extends Entity,
   TKey extends Extract<keyof TEntity, string>,
 >(
-  model: Type<TEntity>,
+  type: Type<TEntity>,
   key: TKey,
   options?: ApiResponseOptions,
 ): MethodDecorator => {
   const descriptor: RelationshipDescriptor<any> =
-    getRelationshipDescriptorByKey(model, key);
+    getRelationshipDescriptorByKey(type, key);
 
-  const type: Type = descriptor.related();
+  const relatedType: Type = descriptor.related();
   const nonNullable: boolean =
     descriptor.kind === 'toOne' ? !!descriptor.nonNullable : false;
 
-  const document: Type = NestApiRelatedEntityResponseDocument(type, {
+  const document: Type = NestApiRelatedEntityResponseDocument(relatedType, {
     nonNullable,
   });
 
@@ -89,11 +89,11 @@ export const NestApiRelatedEntitiesResponse = <
   TEntity extends Entity,
   TKey extends Extract<keyof TEntity, string>,
 >(
-  model: Type<TEntity>,
+  type: Type<TEntity>,
   key: TKey,
   options?: ApiResponseOptions,
 ): MethodDecorator => {
-  const { related } = getRelationshipDescriptorByKey(model, key);
+  const { related } = getRelationshipDescriptorByKey(type, key);
 
   const document: Type = NestApiEntitiesResponseDocument(related());
 
@@ -111,18 +111,18 @@ export const NestApiRelationshipResponse = <
   TEntity extends Entity,
   TKey extends Extract<keyof TEntity, string>,
 >(
-  model: Type<TEntity>,
+  type: Type<TEntity>,
   key: TKey,
   options?: ApiResponseOptions,
 ): MethodDecorator => {
   const descriptor: RelationshipDescriptor<any> =
-    getRelationshipDescriptorByKey(model, key);
+    getRelationshipDescriptorByKey(type, key);
 
-  const type: Type = descriptor.related();
+  const relatedType: Type = descriptor.related();
   const nonNullable: boolean =
     descriptor.kind === 'toOne' ? !!descriptor.nonNullable : false;
 
-  const document: Type = NestApiRelationshipResponseDocument(type, {
+  const document: Type = NestApiRelationshipResponseDocument(relatedType, {
     nonNullable,
   });
 
@@ -140,11 +140,11 @@ export const NestApiRelationshipsResponse = <
   TEntity extends Entity,
   TKey extends Extract<keyof TEntity, string>,
 >(
-  model: Type<TEntity>,
+  type: Type<TEntity>,
   key: TKey,
   options?: ApiResponseOptions,
 ): MethodDecorator => {
-  const { related } = getRelationshipDescriptorByKey(model, key);
+  const { related } = getRelationshipDescriptorByKey(type, key);
 
   const document: Type = NestApiRelationshipsResponseDocument(related());
 

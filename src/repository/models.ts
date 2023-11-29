@@ -23,5 +23,3 @@ export type ToManyRelationshipDescriptor<TRelated extends Entity = Entity> =
 export type RelationshipDescriptor<TRelated extends Entity = Entity> =
   | ToOneRelationshipDescriptor<TRelated>
   | ToManyRelationshipDescriptor<TRelated>;
-
-export type RelationshipDescriptorMap = Record<string, RelationshipDescriptor>;
