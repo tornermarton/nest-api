@@ -14,7 +14,7 @@ type CommonRelationshipDescriptor<
 
 export type ToOneRelationshipDescriptor<TRelated extends Entity = Entity> =
   CommonRelationshipDescriptor<'toOne', TRelated> & {
-    nonNullable?: boolean;
+    nullable?: boolean;
   };
 
 export type ToManyRelationshipDescriptor<TRelated extends Entity = Entity> =

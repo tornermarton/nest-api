@@ -130,11 +130,11 @@ export const NestApiRelationshipRequestBody = <
     );
 
     const relatedType: Type = descriptor.related();
-    const nonNullable: boolean =
-      descriptor.kind === 'toOne' ? !!descriptor.nonNullable : false;
+    const nullable: boolean | undefined =
+      descriptor.kind === 'toOne' ? descriptor.nullable : true;
 
     const document: Type = NestApiRelationshipRequestDocument(relatedType, {
-      nonNullable,
+      nullable,
     });
 
     Body(
@@ -198,11 +198,11 @@ export const NestApiRelationshipRequest = <
   );
 
   const relatedType: Type = descriptor.related();
-  const nonNullable: boolean =
-    descriptor.kind === 'toOne' ? !!descriptor.nonNullable : false;
+  const nullable: boolean | undefined =
+    descriptor.kind === 'toOne' ? descriptor.nullable : true;
 
   const document: Type = NestApiRelationshipRequestDocument(relatedType, {
-    nonNullable,
+    nullable,
   });
 
   return applyDecorators(

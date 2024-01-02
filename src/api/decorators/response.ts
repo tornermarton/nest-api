@@ -68,11 +68,11 @@ export const NestApiRelatedResourceResponse = <
     getRelationshipDescriptorByKey(type, key);
 
   const relatedType: Type = descriptor.related();
-  const nonNullable: boolean =
-    descriptor.kind === 'toOne' ? !!descriptor.nonNullable : false;
+  const nullable: boolean | undefined =
+    descriptor.kind === 'toOne' ? descriptor.nullable : true;
 
   const document: Type = NestApiRelatedResourceResponseDocument(relatedType, {
-    nonNullable,
+    nullable,
   });
 
   return applyDecorators(
@@ -119,11 +119,11 @@ export const NestApiRelationshipResponse = <
     getRelationshipDescriptorByKey(type, key);
 
   const relatedType: Type = descriptor.related();
-  const nonNullable: boolean =
-    descriptor.kind === 'toOne' ? !!descriptor.nonNullable : false;
+  const nullable: boolean | undefined =
+    descriptor.kind === 'toOne' ? descriptor.nullable : true;
 
   const document: Type = NestApiRelationshipResponseDocument(relatedType, {
-    nonNullable,
+    nullable,
   });
 
   return applyDecorators(
