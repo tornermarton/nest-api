@@ -16,19 +16,19 @@ import { Entity } from '../../core';
 import { RelationshipDescriptor } from '../../repository';
 import { getRelationshipDescriptorByKey } from '../metadata';
 import {
-  NestApiEntitiesResponseDocument,
-  NestApiEntityResponseDocument,
+  NestApiResourcesResponseDocument,
+  NestApiResourceResponseDocument,
   NestApiErrorDocument,
-  NestApiRelatedEntityResponseDocument,
+  NestApiRelatedResourceResponseDocument,
   NestApiRelationshipResponseDocument,
   NestApiRelationshipsResponseDocument,
 } from '../models';
 
-export const NestApiEntityResponse = <TEntity extends Entity>(
-  type: Type<TEntity>,
+export const NestApiResourceResponse = <TResource extends Entity>(
+  type: Type<TResource>,
   options?: ApiResponseOptions,
 ): MethodDecorator => {
-  const document: Type = NestApiEntityResponseDocument(type);
+  const document: Type = NestApiResourceResponseDocument(type);
 
   return applyDecorators(
     ApiExtraModels(document),
@@ -40,11 +40,11 @@ export const NestApiEntityResponse = <TEntity extends Entity>(
   );
 };
 
-export const NestApiEntitiesResponse = <TEntity extends Entity>(
-  type: Type<TEntity>,
+export const NestApiResourcesResponse = <TResource extends Entity>(
+  type: Type<TResource>,
   options?: ApiResponseOptions,
 ): MethodDecorator => {
-  const document: Type = NestApiEntitiesResponseDocument(type);
+  const document: Type = NestApiResourcesResponseDocument(type);
 
   return applyDecorators(
     ApiExtraModels(document),
@@ -56,11 +56,11 @@ export const NestApiEntitiesResponse = <TEntity extends Entity>(
   );
 };
 
-export const NestApiRelatedEntityResponse = <
-  TEntity extends Entity,
-  TKey extends Extract<keyof TEntity, string>,
+export const NestApiRelatedResourceResponse = <
+  TResource extends Entity,
+  TKey extends Extract<keyof TResource, string>,
 >(
-  type: Type<TEntity>,
+  type: Type<TResource>,
   key: TKey,
   options?: ApiResponseOptions,
 ): MethodDecorator => {
@@ -71,7 +71,7 @@ export const NestApiRelatedEntityResponse = <
   const nonNullable: boolean =
     descriptor.kind === 'toOne' ? !!descriptor.nonNullable : false;
 
-  const document: Type = NestApiRelatedEntityResponseDocument(relatedType, {
+  const document: Type = NestApiRelatedResourceResponseDocument(relatedType, {
     nonNullable,
   });
 
@@ -85,17 +85,17 @@ export const NestApiRelatedEntityResponse = <
   );
 };
 
-export const NestApiRelatedEntitiesResponse = <
-  TEntity extends Entity,
-  TKey extends Extract<keyof TEntity, string>,
+export const NestApiRelatedResourcesResponse = <
+  TResource extends Entity,
+  TKey extends Extract<keyof TResource, string>,
 >(
-  type: Type<TEntity>,
+  type: Type<TResource>,
   key: TKey,
   options?: ApiResponseOptions,
 ): MethodDecorator => {
   const { related } = getRelationshipDescriptorByKey(type, key);
 
-  const document: Type = NestApiEntitiesResponseDocument(related());
+  const document: Type = NestApiResourcesResponseDocument(related());
 
   return applyDecorators(
     ApiExtraModels(document),
@@ -108,10 +108,10 @@ export const NestApiRelatedEntitiesResponse = <
 };
 
 export const NestApiRelationshipResponse = <
-  TEntity extends Entity,
-  TKey extends Extract<keyof TEntity, string>,
+  TResource extends Entity,
+  TKey extends Extract<keyof TResource, string>,
 >(
-  type: Type<TEntity>,
+  type: Type<TResource>,
   key: TKey,
   options?: ApiResponseOptions,
 ): MethodDecorator => {
@@ -137,10 +137,10 @@ export const NestApiRelationshipResponse = <
 };
 
 export const NestApiRelationshipsResponse = <
-  TEntity extends Entity,
-  TKey extends Extract<keyof TEntity, string>,
+  TResource extends Entity,
+  TKey extends Extract<keyof TResource, string>,
 >(
-  type: Type<TEntity>,
+  type: Type<TResource>,
   key: TKey,
   options?: ApiResponseOptions,
 ): MethodDecorator => {

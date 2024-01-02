@@ -2,7 +2,7 @@ import { Type } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 
 import { Entity } from '../../core';
-import { getEntityMetadata } from '../metadata';
+import { getResourceMetadata } from '../metadata';
 
 type NestApiControllerOptions = {
   auth: boolean;
@@ -14,10 +14,10 @@ export const NestApiController = <TEntity extends Entity>(
 ): ClassDecorator => {
   // eslint-disable-next-line @typescript-eslint/ban-types
   return (target: Function): void => {
-    const metadata = getEntityMetadata(entity.prototype);
-    const { type } = metadata;
+    const metadata = getResourceMetadata(entity.prototype);
+    const { name } = metadata;
 
-    ApiTags(type)(target);
+    ApiTags(name)(target);
 
     if (options?.auth) {
       ApiBearerAuth()(target);

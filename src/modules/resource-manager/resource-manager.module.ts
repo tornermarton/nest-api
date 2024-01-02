@@ -1,8 +1,11 @@
 import { DynamicModule, FactoryProvider, Module, Type } from '@nestjs/common';
 
-import { EntityManagerService } from './entity-manager.service';
-import { getEntityManagerToken } from './utils';
-import { getEntityMetadata, getInverseRelationshipDescriptor } from '../../api';
+import { ResourceManagerService } from './resource-manager.service';
+import { getResourceManagerToken } from './utils';
+import {
+  getResourceMetadata,
+  getInverseRelationshipDescriptor,
+} from '../../api';
 import { isNotNullOrUndefined } from '../../core';
 import {
   getEntityRepositoryToken,
@@ -16,12 +19,12 @@ type EntityManagerModuleOptions = {
 };
 
 @Module({})
-export class EntityManagerModule {
+export class ResourceManagerModule {
   public static forFeature({
     entities,
     repositoryModule,
   }: EntityManagerModuleOptions): DynamicModule {
-    // TODO: optimize this next part since it is very wasteful with doble traversal of first map values
+    // TODO: optimize this next part since it is very wasteful with double traversal of first map values
     const entitiesMap: Map<string, Type> = new Map<string, Type>();
 
     entities.forEach((type) => {
@@ -36,7 +39,7 @@ export class EntityManagerModule {
     >();
 
     Array.from(entitiesMap.values())
-      .map((type) => getEntityMetadata(type.prototype))
+      .map((type) => getResourceMetadata(type.prototype))
       .map(({ fields }) => fields.relationships)
       .flat()
       .map(({ descriptor }) => {
@@ -64,7 +67,7 @@ export class EntityManagerModule {
       });
 
     Array.from(entitiesMap.values())
-      .map((type) => getEntityMetadata(type.prototype))
+      .map((type) => getResourceMetadata(type.prototype))
       .map(({ fields }) => fields.relationships)
       .flat()
       .map(({ descriptor }) => {
@@ -86,9 +89,9 @@ export class EntityManagerModule {
     // TODO: rename this instead of reassignment
     entities = Array.from(entitiesMap.values());
 
-    const relationships: RelationshipDescriptor<any>[] = Array.from(
+    const relationships: RelationshipDescriptor[] = Array.from(
       relationshipsMap.values(),
-    );
+    ) as RelationshipDescriptor[];
 
     const entityTokens: string[] = entities.map((type) =>
       getEntityRepositoryToken(type),
@@ -98,8 +101,8 @@ export class EntityManagerModule {
     );
 
     const serviceProvider: FactoryProvider = {
-      provide: EntityManagerService,
-      useFactory: (...repositories: any[]) => {
+      provide: ResourceManagerService,
+      useFactory: (...repositories) => {
         const entityDefinitions = entities.map((type, index) => ({
           type,
           repository: repositories[index],
@@ -112,7 +115,7 @@ export class EntityManagerModule {
           }),
         );
 
-        return new EntityManagerService(
+        return new ResourceManagerService(
           entityDefinitions,
           relationshipDefinitions,
         );
@@ -121,13 +124,15 @@ export class EntityManagerModule {
     };
 
     const managerProviders: FactoryProvider[] = entities.map((type) => ({
-      provide: getEntityManagerToken(type),
-      useFactory: (service: EntityManagerService) => service.get(type),
-      inject: [EntityManagerService],
+      provide: getResourceManagerToken(type),
+      useFactory: (service: ResourceManagerService) => service.get(type),
+      inject: [ResourceManagerService],
     }));
 
     return {
-      module: EntityManagerModule,
+      module: ResourceManagerModule,
+      // TODO: remove repository module forFeature call and allow user to define this
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
       imports: [repositoryModule.forFeature({ entities, relationships })],
       providers: [serviceProvider, ...managerProviders],
       exports: [repositoryModule, serviceProvider, ...managerProviders],

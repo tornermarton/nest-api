@@ -2,8 +2,8 @@ import { Type } from '@nestjs/common';
 import { ApiPropertyOptions, ApiQueryOptions } from '@nestjs/swagger';
 
 import {
-  NEST_API_ENTITY_METADATA_KEY,
-  NEST_API_ENTITY_FIELDS_METADATA_KEY,
+  NEST_API_RESOURCE_METADATA_KEY,
+  NEST_API_RESOURCE_FIELDS_METADATA_KEY,
   NEST_API_QUERY_METADATA_KEY,
 } from './constants';
 import {
@@ -15,7 +15,7 @@ import {
 } from '../core';
 import { RelationshipDescriptor } from '../repository';
 
-export type NestApiEntityFieldsMetadata = {
+export type NestApiResourceFieldsMetadata = {
   id?: { name: string; openapi: ApiPropertyOptions };
   attributes: { name: string; openapi: ApiPropertyOptions }[];
   relationships: {
@@ -26,9 +26,9 @@ export type NestApiEntityFieldsMetadata = {
   meta: { name: string; openapi: ApiPropertyOptions }[];
 };
 
-export type NestApiEntityMetadata = {
-  type: string;
-  fields: NestApiEntityFieldsMetadata;
+export type NestApiResourceMetadata = {
+  name: string;
+  fields: NestApiResourceFieldsMetadata;
 };
 
 export type NestApiQueryParameterMetadata = {
@@ -41,34 +41,34 @@ export type NestApiQueryMetadata = {
 };
 
 // eslint-disable-next-line @typescript-eslint/ban-types
-export function getEntityMetadata(target: Function): NestApiEntityMetadata {
-  const metadata: NestApiEntityMetadata | undefined = Reflect.getMetadata(
-    NEST_API_ENTITY_METADATA_KEY,
+export function getResourceMetadata(target: Function): NestApiResourceMetadata {
+  const metadata: NestApiResourceMetadata | undefined = Reflect.getMetadata(
+    NEST_API_RESOURCE_METADATA_KEY,
     target,
   );
 
   if (isNullOrUndefined(metadata)) {
     throw new UnknownEntityException(
-      `Target [${target.name}] must be decorated  with @NestApiEntity()`,
+      `Target [${target.name}] must be decorated  with @NestApiResource()`,
     );
   }
 
   return metadata;
 }
-export function setEntityMetadata(
+export function setResourceMetadata(
   // eslint-disable-next-line @typescript-eslint/ban-types
   target: Function,
-  metadata: NestApiEntityMetadata,
+  metadata: NestApiResourceMetadata,
 ): void {
-  Reflect.defineMetadata(NEST_API_ENTITY_METADATA_KEY, metadata, target);
+  Reflect.defineMetadata(NEST_API_RESOURCE_METADATA_KEY, metadata, target);
 }
 
-export function getEntityFieldsMetadata(
+export function getResourceFieldsMetadata(
   // eslint-disable-next-line @typescript-eslint/ban-types
   target: Object,
-): Partial<NestApiEntityFieldsMetadata> {
-  const metadata: Partial<NestApiEntityFieldsMetadata> | undefined =
-    Reflect.getMetadata(NEST_API_ENTITY_FIELDS_METADATA_KEY, target);
+): Partial<NestApiResourceFieldsMetadata> {
+  const metadata: Partial<NestApiResourceFieldsMetadata> | undefined =
+    Reflect.getMetadata(NEST_API_RESOURCE_FIELDS_METADATA_KEY, target);
 
   if (isNullOrUndefined(metadata)) {
     return {};
@@ -77,12 +77,16 @@ export function getEntityFieldsMetadata(
   return metadata;
 }
 
-export function setEntityFieldsMetadata(
+export function setResourceFieldsMetadata(
   // eslint-disable-next-line @typescript-eslint/ban-types
   target: Object,
-  metadata: Partial<NestApiEntityFieldsMetadata>,
+  metadata: Partial<NestApiResourceFieldsMetadata>,
 ): void {
-  Reflect.defineMetadata(NEST_API_ENTITY_FIELDS_METADATA_KEY, metadata, target);
+  Reflect.defineMetadata(
+    NEST_API_RESOURCE_FIELDS_METADATA_KEY,
+    metadata,
+    target,
+  );
 }
 
 export function getInverseRelationshipDescriptor<TRelated extends Entity>({
@@ -94,8 +98,8 @@ export function getInverseRelationshipDescriptor<TRelated extends Entity>({
     return null;
   }
 
-  const type: Type = related();
-  const metadata = getEntityMetadata(type.prototype);
+  const type: Type<TRelated> = related();
+  const metadata = getResourceMetadata(type.prototype);
   const { relationships } = metadata.fields;
   const relationship = relationships.find(({ name }) => name === inverse);
 
@@ -111,7 +115,7 @@ export function getInverseRelationshipDescriptor<TRelated extends Entity>({
 export function getRelationshipDescriptors<TEntity extends Entity>(
   type: Type<TEntity>,
 ): RelationshipDescriptor<any>[] {
-  const metadata: NestApiEntityMetadata = getEntityMetadata(type.prototype);
+  const metadata: NestApiResourceMetadata = getResourceMetadata(type.prototype);
   const { relationships } = metadata.fields;
   const descriptors = relationships.map(({ descriptor }) => descriptor);
   const inverseDescriptors = descriptors
@@ -125,7 +129,7 @@ export function getRelationshipDescriptorByKey<
   TEntity extends Entity,
   TKey extends Extract<keyof TEntity, string>,
 >(type: Type<TEntity>, key: TKey): RelationshipDescriptor {
-  const metadata: NestApiEntityMetadata = getEntityMetadata(type.prototype);
+  const metadata: NestApiResourceMetadata = getResourceMetadata(type.prototype);
 
   const descriptor: RelationshipDescriptor | undefined =
     metadata.fields.relationships.find(({ name }) => name === key)?.descriptor;

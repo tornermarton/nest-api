@@ -1,7 +1,7 @@
 import { Request } from 'express';
 import { parse, stringify } from 'qs';
 
-import { BaseUrl, EntityResponse } from './models';
+import { BaseUrl, ResourceResponse } from './models';
 import {
   NestApiDocumentPaging,
   NestApiPaginationLinksInterface,
@@ -11,11 +11,11 @@ import {
   NestApiEntityResponseDocumentLinksInterface,
 } from '../api';
 import { isNotNullOrUndefined } from '../core';
-import { IQueryEntitiesDto, PageDto } from '../dto';
+import { IQueryResourcesDto, PageDto } from '../dto';
 
-export function isNotEmptyEntityResponse<T>(
-  response: EntityResponse<T | null | undefined>,
-): response is EntityResponse<T> {
+export function isNotEmptyResourceResponse<T>(
+  response: ResourceResponse<T | null | undefined>,
+): response is ResourceResponse<T> {
   return isNotNullOrUndefined(response.data);
 }
 
@@ -72,10 +72,7 @@ type Mutable<Type> = {
   -readonly [Key in keyof Type]: Type[Key];
 };
 
-function updateQuery(
-  url: URL,
-  query: IQueryEntitiesDto<unknown, unknown, never>,
-): string {
+function updateQuery(url: URL, query: IQueryResourcesDto<unknown>): string {
   // eslint-disable-next-line @typescript-eslint/no-unsafe-call
   url.search = stringify(query, {
     encodeValuesOnly: true,
@@ -87,17 +84,14 @@ function updateQuery(
 function getNestApiPaginationLinks(
   request: Request,
   base: string,
-  total = Infinity,
+  total: number = Infinity,
 ): NestApiPaginationLinksInterface {
   const url: URL = new URL(base);
   // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-  const query: Mutable<IQueryEntitiesDto<unknown, unknown, never>> = parse(
-    url.search,
-    {
-      ignoreQueryPrefix: true,
-      comma: true,
-    },
-  ) as unknown as Mutable<IQueryEntitiesDto<unknown, unknown, never>>;
+  const query: Mutable<IQueryResourcesDto<unknown>> = parse(url.search, {
+    ignoreQueryPrefix: true,
+    comma: true,
+  }) as unknown as Mutable<IQueryResourcesDto<unknown>>;
 
   const paging: NestApiDocumentPaging = getNestApiDocumentPaging(
     request,
@@ -137,7 +131,7 @@ function getNestApiPaginationLinks(
 export function getNestApiEntitiesDocumentLinks(
   baseUrl: BaseUrl,
   request: Request,
-  total = Infinity,
+  total: number = Infinity,
 ): NestApiEntitiesResponseDocumentLinksInterface {
   const commonLinks = getNestApiCommonDocumentLinks(baseUrl, request);
 
@@ -150,7 +144,7 @@ export function getNestApiEntitiesDocumentLinks(
 export function getNestApiRelationshipsDocumentLinks(
   baseUrl: BaseUrl,
   request: Request,
-  total = Infinity,
+  total: number = Infinity,
 ): NestApiRelationshipResponseDocumentLinks {
   const commonLinks = getNestApiCommonDocumentLinks(baseUrl, request);
 

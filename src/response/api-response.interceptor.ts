@@ -19,11 +19,11 @@ import { map } from 'rxjs/operators';
 import { EndpointDefinition, EndpointMatcher } from './endpoint-matcher';
 import {
   BaseUrl,
-  EntitiesResponse,
-  EntityResponse,
-  NestApiEntityResourceBuilder,
-  RelatedEntitiesResponse,
-  RelatedEntityResponse,
+  ResourcesResponse,
+  ResourceResponse,
+  NestApiResourceBuilder,
+  RelatedResourcesResponse,
+  RelatedResourceResponse,
   RelationshipResponse,
   RelationshipsResponse,
 } from './models';
@@ -36,11 +36,11 @@ import {
   getNestApiRelationshipsDocumentLinks,
 } from './utils';
 import {
-  getEntityMetadata,
+  getResourceMetadata,
   NestApiDocumentMetaInterface,
-  NestApiEntityMetadata,
-  NestApiResourceIdentifierInterface,
-  NestApiResourceInterface,
+  NestApiResourceMetadata,
+  NestApiResourceIdentifierDataInterface,
+  NestApiResourceDataInterface,
   NestApiResponseDocumentInterface,
 } from '../api';
 import { isNullOrUndefined, MissingIdFieldException } from '../core';
@@ -84,12 +84,12 @@ export class ApiResponseInterceptor<T = unknown>
   // eslint-disable-next-line @typescript-eslint/ban-types
   private transformEntity<T extends Function>(
     entity?: T,
-  ): NestApiResourceInterface | null {
+  ): NestApiResourceDataInterface | null {
     if (isNullOrUndefined(entity)) {
       return null;
     }
 
-    const metadata: NestApiEntityMetadata = getEntityMetadata(entity);
+    const metadata: NestApiResourceMetadata = getResourceMetadata(entity);
 
     if (isNullOrUndefined(metadata.fields.id)) {
       throw new MissingIdFieldException(
@@ -99,10 +99,12 @@ export class ApiResponseInterceptor<T = unknown>
 
     // TODO: might be a good idea to check type in the decorator
     const id: string = entity[metadata.fields.id.name];
-    const type: string = metadata.type;
+    const type: string = metadata.name;
 
-    const builder: NestApiEntityResourceBuilder =
-      new NestApiEntityResourceBuilder(id, type);
+    const builder: NestApiResourceBuilder = new NestApiResourceBuilder(
+      id,
+      type,
+    );
 
     const obj: Record<string, unknown> = instanceToPlain(entity, {
       excludeExtraneousValues: true,
@@ -117,20 +119,20 @@ export class ApiResponseInterceptor<T = unknown>
     }
 
     for (const { name, descriptor } of metadata.fields.relationships) {
-      const relationshipMetadata: NestApiEntityMetadata = getEntityMetadata(
+      const relationshipMetadata: NestApiResourceMetadata = getResourceMetadata(
         descriptor.related().prototype,
       );
 
       if (descriptor.kind === 'toMany') {
         builder.relationshipToMany(
           name,
-          relationshipMetadata.type,
+          relationshipMetadata.name,
           obj[name] as string[],
         );
       } else {
         builder.relationshipToOne(
           name,
-          relationshipMetadata.type,
+          relationshipMetadata.name,
           obj[name] as string,
         );
       }
@@ -142,14 +144,16 @@ export class ApiResponseInterceptor<T = unknown>
   private transformRelationship<T>(
     type: Type<T>,
     data?: string,
-  ): NestApiResourceIdentifierInterface | null {
+  ): NestApiResourceIdentifierDataInterface | null {
     if (isNullOrUndefined(data)) {
       return null;
     }
 
-    const metadata: NestApiEntityMetadata = getEntityMetadata(type.prototype);
+    const metadata: NestApiResourceMetadata = getResourceMetadata(
+      type.prototype,
+    );
 
-    return { id: data, type: metadata.type };
+    return { id: data, type: metadata.name };
   }
 
   public intercept(
@@ -177,7 +181,10 @@ export class ApiResponseInterceptor<T = unknown>
           reason,
         };
 
-        if (r instanceof EntityResponse || r instanceof RelatedEntityResponse) {
+        if (
+          r instanceof ResourceResponse ||
+          r instanceof RelatedResourceResponse
+        ) {
           return {
             meta: meta,
             data: this.transformEntity(r.data),
@@ -191,8 +198,8 @@ export class ApiResponseInterceptor<T = unknown>
             ),
           };
         } else if (
-          r instanceof EntitiesResponse ||
-          r instanceof RelatedEntitiesResponse
+          r instanceof ResourcesResponse ||
+          r instanceof RelatedResourcesResponse
         ) {
           return {
             meta: meta,

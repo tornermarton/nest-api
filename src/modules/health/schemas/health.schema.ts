@@ -6,13 +6,13 @@ import {
 
 import {
   NestApiAttributeField,
-  NestApiEntity,
+  NestApiResource,
   NestApiIdField,
   NestApiMetaField,
 } from '../../../api';
 import { Entity } from '../../../core';
 
-@NestApiEntity('health')
+@NestApiResource('health')
 export class Health implements Entity, HealthCheckResult {
   @NestApiIdField()
   public readonly id: string;

@@ -13,8 +13,8 @@ import {
 } from './exception-factories';
 import {
   NestApiRequestDocumentInterface,
-  NestApiResourceIdentifierInterface,
-  NestApiResourceInterface,
+  NestApiResourceIdentifierDataInterface,
+  NestApiResourceDataInterface,
 } from '../api';
 
 export class NestApiRequestIdPipe extends ParseUUIDPipe {
@@ -62,11 +62,11 @@ export class NestApiRequestBodyDataTransformationPipe
 
 // TODO: use interface without links
 export class NestApiEntityRequestBodyTransformationPipe<T>
-  implements PipeTransform<NestApiResourceInterface>
+  implements PipeTransform<NestApiResourceDataInterface>
 {
   constructor(private readonly type: Type<T>) {}
 
-  public transform(value: NestApiResourceInterface): T {
+  public transform(value: NestApiResourceDataInterface): T {
     const attributes: Record<string, unknown> = value.attributes ?? {};
 
     const relationships: Record<string, unknown> = Object.entries(
@@ -100,19 +100,19 @@ export class NestApiEntityRequestBodyTransformationPipe<T>
 }
 
 export class NestApiRelationshipRequestBodyTransformationPipe
-  implements PipeTransform<NestApiResourceIdentifierInterface | null>
+  implements PipeTransform<NestApiResourceIdentifierDataInterface | null>
 {
   public transform(
-    value: NestApiResourceIdentifierInterface | null,
+    value: NestApiResourceIdentifierDataInterface | null,
   ): string | null {
     return value?.id ?? null;
   }
 }
 
 export class NestApiRelationshipsRequestBodyTransformationPipe
-  implements PipeTransform<NestApiResourceIdentifierInterface[]>
+  implements PipeTransform<NestApiResourceIdentifierDataInterface[]>
 {
-  public transform(value: NestApiResourceIdentifierInterface[]): string[] {
+  public transform(value: NestApiResourceIdentifierDataInterface[]): string[] {
     return value.map((e) => e.id);
   }
 }

@@ -18,37 +18,38 @@ import {
   setQueryMetadata,
 } from '../api';
 import { isNotNullOrUndefined } from '../core';
+import { ResourceRelationshipKey } from '../modules';
 
 // TODO: typing based on function input
-export interface IQueryEntityDto<
-  TModel,
-  TInclude extends Extract<keyof TModel, string>,
+export interface IQueryResourceDto<
+  TResource,
+  TInclude extends ResourceRelationshipKey<TResource> = never,
 > {
   readonly include?: TInclude[];
 }
 
-export function QueryEntityDto<
-  TModel,
-  TInclude extends Extract<keyof TModel, string> = never,
+export function QueryResourceDto<
+  TResource,
+  TInclude extends ResourceRelationshipKey<TResource> = never,
 >(
-  type: Type<TModel>,
+  type: Type<TResource>,
   {
     include,
   }: {
     include?: readonly TInclude[];
   },
-): Type<IQueryEntityDto<TModel, TInclude>> {
+): Type<IQueryResourceDto<TResource, TInclude>> {
   const queryTypes: Type[] = [];
 
   if (isNotNullOrUndefined(include)) {
     const values: TInclude[] = [...include];
 
-    class QueryEntityWithInclude {
+    class QueryResourceWithInclude {
       @NestApiQueryParameter({
         options: {
           style: 'form',
           explode: false,
-          enumName: `${type.name}EntityIncludeDto`,
+          enumName: `${type.name}ResourceIncludeDto`,
           // TODO: this is a hack since NestJS Swagger handles enums incorrectly
           schema: {
             type: 'string',
@@ -66,7 +67,7 @@ export function QueryEntityDto<
       @Transform(({ value }) => (typeof value === 'string' ? [value] : value))
       public readonly include?: TInclude[];
     }
-    queryTypes.push(QueryEntityWithInclude);
+    queryTypes.push(QueryResourceWithInclude);
   }
 
   class QueryDto extends IntersectionType(...queryTypes) {}
@@ -81,12 +82,12 @@ export function QueryEntityDto<
     );
   setQueryMetadata(QueryDto.prototype, metadata);
 
-  return QueryDto as Type<IQueryEntityDto<TModel, TInclude>>;
+  return QueryDto as Type<IQueryResourceDto<TResource, TInclude>>;
 }
 
 export type SortDefinition<
-  TModel,
-  TSort extends Extract<keyof TModel, string>,
+  TResource,
+  TSort extends Extract<keyof TResource, string>,
 > = {
   key: TSort;
   asc: boolean;
@@ -94,9 +95,9 @@ export type SortDefinition<
 };
 
 function parseSortDefinitions<
-  TModel,
-  TSort extends Extract<keyof TModel, string>,
->(definitions: readonly SortDefinition<TModel, TSort>[]): string[] {
+  TResource,
+  TSort extends Extract<keyof TResource, string>,
+>(definitions: readonly SortDefinition<TResource, TSort>[]): string[] {
   // TODO: maybe this can be done better, but this is good for now
   return definitions
     .map((d) => {
@@ -142,10 +143,10 @@ export class PageDto {
 }
 
 // TODO: typing based on function input
-export interface IQueryEntitiesDto<
-  TModel,
-  TFilter,
-  TInclude extends Extract<keyof TModel, string>,
+export interface IQueryResourcesDto<
+  TResource,
+  TFilter = never,
+  TInclude extends ResourceRelationshipKey<TResource> = never,
 > {
   readonly filter?: TFilter;
   readonly sort?: string[];
@@ -153,29 +154,29 @@ export interface IQueryEntitiesDto<
   readonly page: PageDto;
 }
 
-export function QueryEntitiesDto<
-  TModel,
+export function QueryResourcesDto<
+  TResource,
   TFilter = never,
-  TSort extends Extract<keyof TModel, string> = never,
-  TInclude extends Extract<keyof TModel, string> = never,
+  TSort extends Extract<keyof TResource, string> = never,
+  TInclude extends ResourceRelationshipKey<TResource> = never,
 >(
-  type: Type<TModel>,
+  type: Type<TResource>,
   {
     filter,
     sort,
     include,
   }: {
     filter?: Type<TFilter>;
-    sort?: readonly SortDefinition<TModel, TSort>[];
+    sort?: readonly SortDefinition<TResource, TSort>[];
     include?: readonly TInclude[];
   },
-): Type<IQueryEntitiesDto<TModel, TFilter, TInclude>> {
+): Type<IQueryResourcesDto<TResource, TFilter, TInclude>> {
   const queryTypes: Type[] = [];
 
   if (isNotNullOrUndefined(filter)) {
     const type: Type<TFilter> = filter;
 
-    class QueryEntitiesWithFilter {
+    class QueryResourcesWithFilter {
       @NestApiQueryParameter({
         type: filter,
         options: {
@@ -191,18 +192,18 @@ export function QueryEntitiesDto<
       @TransformType(() => type)
       public readonly filter?: TFilter;
     }
-    queryTypes.push(QueryEntitiesWithFilter);
+    queryTypes.push(QueryResourcesWithFilter);
   }
 
   if (isNotNullOrUndefined(sort)) {
     const values: string[] = parseSortDefinitions(sort);
 
-    class QueryEntitiesWithSort {
+    class QueryResourcesWithSort {
       @NestApiQueryParameter({
         options: {
           style: 'form',
           explode: false,
-          enumName: `${type.name}EntitiesSortDto`,
+          enumName: `${type.name}ResourcesSortDto`,
           // TODO: this is a hack since NestJS Swagger handles enums incorrectly
           schema: {
             type: 'string',
@@ -220,18 +221,18 @@ export function QueryEntitiesDto<
       @Transform(({ value }) => (typeof value === 'string' ? [value] : value))
       public readonly sort?: string[];
     }
-    queryTypes.push(QueryEntitiesWithSort);
+    queryTypes.push(QueryResourcesWithSort);
   }
 
   if (isNotNullOrUndefined(include)) {
     const values: TInclude[] = [...include];
 
-    class QueryEntityWithInclude {
+    class QueryResourceWithInclude {
       @NestApiQueryParameter({
         options: {
           style: 'form',
           explode: false,
-          enumName: `${type.name}EntitiesIncludeDto`,
+          enumName: `${type.name}ResourcesIncludeDto`,
           // TODO: this is a hack since NestJS Swagger handles enums incorrectly
           schema: {
             type: 'string',
@@ -249,10 +250,10 @@ export function QueryEntitiesDto<
       @Transform(({ value }) => (typeof value === 'string' ? [value] : value))
       public readonly include?: TInclude[];
     }
-    queryTypes.push(QueryEntityWithInclude);
+    queryTypes.push(QueryResourceWithInclude);
   }
 
-  class QueryEntitiesWithPage {
+  class QueryResourcesWithPage {
     @NestApiQueryParameter({
       type: PageDto,
       options: {
@@ -267,7 +268,7 @@ export function QueryEntitiesDto<
     @TransformType(() => PageDto)
     public readonly page: PageDto = new PageDto();
   }
-  queryTypes.push(QueryEntitiesWithPage);
+  queryTypes.push(QueryResourcesWithPage);
 
   class QueryDto extends IntersectionType(...queryTypes) {}
 
@@ -281,11 +282,11 @@ export function QueryEntitiesDto<
     );
   setQueryMetadata(QueryDto.prototype, metadata);
 
-  return QueryDto as Type<IQueryEntitiesDto<TModel, TFilter, TInclude>>;
+  return QueryDto as Type<IQueryResourcesDto<TResource, TFilter, TInclude>>;
 }
 
 // TODO: typing based on function input
-export interface IQueryRelationshipsDto<TFilter> {
+export interface IQueryRelationshipsDto<TFilter = never> {
   readonly filter?: TFilter;
   readonly page: PageDto;
 }

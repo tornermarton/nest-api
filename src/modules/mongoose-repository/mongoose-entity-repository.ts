@@ -7,7 +7,7 @@ import { map } from 'rxjs/operators';
 import { MongooseEntity } from './mongoose-entity';
 import { filterDtoToQuery, sortDtoToQuery } from './utils';
 import { isNotNullOrUndefined } from '../../core';
-import { IQueryEntitiesDto } from '../../dto';
+import { IQueryResourcesDto } from '../../dto';
 import {
   EntityCreateDto,
   EntityRepository,
@@ -31,7 +31,7 @@ export class MongooseEntityRepository<
   }
 
   public count<TFilter>(
-    query: Omit<IQueryEntitiesDto<TEntity, TFilter, never>, 'include'>,
+    query: Omit<IQueryResourcesDto<TEntity, TFilter>, 'include'>,
   ): Observable<number> {
     const filter = filterDtoToQuery(query.filter ?? {});
 
@@ -39,7 +39,7 @@ export class MongooseEntityRepository<
   }
 
   public find<TFilter>(
-    query: Omit<IQueryEntitiesDto<TEntity, TFilter, never>, 'include'>,
+    query: Omit<IQueryResourcesDto<TEntity, TFilter>, 'include'>,
   ): Observable<TEntity[]> {
     const filter = filterDtoToQuery(query.filter ?? {});
     const sort = sortDtoToQuery(query.sort ?? []);

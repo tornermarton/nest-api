@@ -19,7 +19,7 @@ import { map } from 'rxjs/operators';
 
 import { Health } from './schemas/health.schema';
 import {
-  NestApiEntityResponse,
+  NestApiResourceResponse,
   NestApiErrorInterface,
   NestApiServiceUnavailableResponse,
 } from '../../api';
@@ -35,7 +35,7 @@ export class HealthController {
   ) {}
 
   @Get()
-  @NestApiEntityResponse(Health)
+  @NestApiResourceResponse(Health)
   @NestApiServiceUnavailableResponse()
   @HealthCheck()
   public check(): Observable<Health> {

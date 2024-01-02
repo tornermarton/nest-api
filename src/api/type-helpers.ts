@@ -2,9 +2,9 @@ import { Type } from '@nestjs/common';
 import { ApiPropertyOptions, OmitType, PartialType } from '@nestjs/swagger';
 
 import {
-  getEntityMetadata,
-  NestApiEntityMetadata,
-  setEntityMetadata,
+  getResourceMetadata,
+  NestApiResourceMetadata,
+  setResourceMetadata,
 } from './metadata';
 import { Entity } from '../core';
 
@@ -22,9 +22,11 @@ function copyMetadata<O extends Entity, N, K extends keyof O>(
   omit: readonly K[] = [],
   openapi: ApiPropertyOptions = {},
 ): void {
-  const metadata: NestApiEntityMetadata = getEntityMetadata(oldType.prototype);
-  const newMetadata: NestApiEntityMetadata = {
-    type: metadata.type,
+  const metadata: NestApiResourceMetadata = getResourceMetadata(
+    oldType.prototype,
+  );
+  const newMetadata: NestApiResourceMetadata = {
+    name: metadata.name,
     fields: {
       id: omit.includes('id' as unknown as K) ? metadata.fields.id : undefined,
       attributes: metadata.fields.attributes
@@ -45,7 +47,7 @@ function copyMetadata<O extends Entity, N, K extends keyof O>(
       meta: [],
     },
   };
-  setEntityMetadata(newType.prototype, newMetadata);
+  setResourceMetadata(newType.prototype, newMetadata);
 }
 
 export function CreateEntityDto<

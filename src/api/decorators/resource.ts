@@ -4,35 +4,31 @@ import { Expose } from 'class-transformer';
 import { Entity, isNullOrUndefined, MissingIdFieldException } from '../../core';
 import { RelationshipDescriptor } from '../../repository';
 import {
-  getEntityFieldsMetadata,
-  NestApiEntityFieldsMetadata,
-  setEntityMetadata,
-  setEntityFieldsMetadata,
+  getResourceFieldsMetadata,
+  NestApiResourceFieldsMetadata,
+  setResourceMetadata,
+  setResourceFieldsMetadata,
 } from '../metadata';
 
-export function NestApiEntity(name: string): ClassDecorator {
+export function NestApiResource(name: string): ClassDecorator {
   // eslint-disable-next-line @typescript-eslint/ban-types
   return (target: Function): void => {
-    const fieldsMetadata: Partial<NestApiEntityFieldsMetadata> =
-      getEntityFieldsMetadata(target.prototype);
+    const fieldsMetadata: Partial<NestApiResourceFieldsMetadata> =
+      getResourceFieldsMetadata(target.prototype);
 
     if (isNullOrUndefined(fieldsMetadata.id)) {
       throw new MissingIdFieldException(
-        `Entity [${name}] must have an ID property decorated with @NestApiEntityId()`,
+        `Resource [${name}] must have an ID property decorated with @NestApiIdField()`,
       );
     }
 
-    fieldsMetadata.attributes = fieldsMetadata.attributes ?? [];
-    fieldsMetadata.relationships = fieldsMetadata.relationships ?? [];
-    fieldsMetadata.meta = fieldsMetadata.meta ?? [];
-
-    setEntityMetadata(target.prototype, {
-      type: name,
+    setResourceMetadata(target.prototype, {
+      name: name,
       fields: {
         id: fieldsMetadata.id,
-        attributes: fieldsMetadata.attributes,
-        relationships: fieldsMetadata.relationships,
-        meta: fieldsMetadata.meta,
+        attributes: fieldsMetadata.attributes ?? [],
+        relationships: fieldsMetadata.relationships ?? [],
+        meta: fieldsMetadata.meta ?? [],
       },
     });
   };
@@ -53,8 +49,8 @@ export function NestApiIdField(
     const openapi: ApiPropertyOptions = options ?? {};
     openapi.required = openapi.required ?? true;
 
-    setEntityFieldsMetadata(target, {
-      ...getEntityFieldsMetadata(target),
+    setResourceFieldsMetadata(target, {
+      ...getResourceFieldsMetadata(target),
       id: { name: propertyKey.toString(), openapi: openapi },
     });
   };
@@ -72,9 +68,9 @@ export function NestApiAttributeField(
     const openapi: ApiPropertyOptions = options ?? {};
     openapi.required = openapi.required ?? true;
 
-    const fieldsMetadata: Partial<NestApiEntityFieldsMetadata> =
-      getEntityFieldsMetadata(target);
-    setEntityFieldsMetadata(target, {
+    const fieldsMetadata: Partial<NestApiResourceFieldsMetadata> =
+      getResourceFieldsMetadata(target);
+    setResourceFieldsMetadata(target, {
       ...fieldsMetadata,
       attributes: [
         ...(fieldsMetadata.attributes ?? []),
@@ -95,9 +91,9 @@ export function NestApiRelationshipField<TRelated extends Entity>(
     const openapi: ApiPropertyOptions = options ?? {};
     openapi.required = true;
 
-    const fieldsMetadata: Partial<NestApiEntityFieldsMetadata> =
-      getEntityFieldsMetadata(target);
-    setEntityFieldsMetadata(target, {
+    const fieldsMetadata: Partial<NestApiResourceFieldsMetadata> =
+      getResourceFieldsMetadata(target);
+    setResourceFieldsMetadata(target, {
       ...fieldsMetadata,
       relationships: [
         ...(fieldsMetadata.relationships ?? []),
@@ -117,15 +113,15 @@ export function NestApiMetaField(
   // eslint-disable-next-line @typescript-eslint/ban-types
   return (target: Object, propertyKey: string | symbol): void => {
     Expose()(target, propertyKey);
-    // TODO: move to Resource in models.ts
+    // TODO: move to ResourceData in models.ts
     ApiProperty(options)(target, propertyKey);
 
     const openapi: ApiPropertyOptions = options ?? {};
     openapi.required = openapi.required ?? true;
 
-    const fieldsMetadata: Partial<NestApiEntityFieldsMetadata> =
-      getEntityFieldsMetadata(target);
-    setEntityFieldsMetadata(target, {
+    const fieldsMetadata: Partial<NestApiResourceFieldsMetadata> =
+      getResourceFieldsMetadata(target);
+    setResourceFieldsMetadata(target, {
       ...fieldsMetadata,
       meta: [
         ...(fieldsMetadata.meta ?? []),

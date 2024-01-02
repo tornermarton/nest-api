@@ -1,7 +1,7 @@
 import { Type } from '@nestjs/common';
 
 import {
-  NestApiResourceInterface,
+  NestApiResourceDataInterface,
   NestApiResourceRelationshipInterface,
   NestApiResourceRelationshipToManyLinksInterface,
   NestApiResourceRelationshipToOneLinksInterface,
@@ -10,11 +10,11 @@ import { isNotNullOrUndefined } from '../core';
 
 export type BaseUrl = { scheme: string; host: string; port: number };
 
-export class EntityResponse<T = unknown> {
+export class ResourceResponse<T = unknown> {
   constructor(public readonly data: T, public readonly included?: unknown[]) {}
 }
 
-export class EntitiesResponse<T = unknown> {
+export class ResourcesResponse<T = unknown> {
   constructor(
     public readonly data: T[],
     public readonly included?: unknown[],
@@ -22,11 +22,11 @@ export class EntitiesResponse<T = unknown> {
   ) {}
 }
 
-export class RelatedEntityResponse<T = unknown> {
+export class RelatedResourceResponse<T = unknown> {
   constructor(public readonly data: T, public readonly included?: unknown[]) {}
 }
 
-export class RelatedEntitiesResponse<T = unknown> {
+export class RelatedResourcesResponse<T = unknown> {
   constructor(
     public readonly data: T[],
     public readonly included?: unknown[],
@@ -46,7 +46,7 @@ export class RelationshipsResponse<T = unknown> {
   ) {}
 }
 
-export class NestApiEntityResourceBuilder {
+export class NestApiResourceBuilder {
   private readonly _id: string;
   private readonly _type: string;
 
@@ -63,13 +63,13 @@ export class NestApiEntityResourceBuilder {
     return `/${this._type}/${this._id}`;
   }
 
-  public meta<T>(name: string, value: T): NestApiEntityResourceBuilder {
+  public meta<T>(name: string, value: T): NestApiResourceBuilder {
     this._meta = this._meta ?? {};
     this._meta[name] = value;
     return this;
   }
 
-  public attribute<T>(name: string, value: T): NestApiEntityResourceBuilder {
+  public attribute<T>(name: string, value: T): NestApiResourceBuilder {
     this._attributes = this._attributes ?? {};
     this._attributes[name] = value;
     return this;
@@ -103,7 +103,7 @@ export class NestApiEntityResourceBuilder {
     name: string,
     type: string,
     value: string | null,
-  ): NestApiEntityResourceBuilder {
+  ): NestApiResourceBuilder {
     this._relationships = this._relationships ?? {};
 
     this._relationships[name] = {
@@ -118,7 +118,7 @@ export class NestApiEntityResourceBuilder {
     name: string,
     type: string,
     value: string[],
-  ): NestApiEntityResourceBuilder {
+  ): NestApiResourceBuilder {
     this._relationships = this._relationships ?? {};
 
     this._relationships[name] = {
@@ -132,7 +132,7 @@ export class NestApiEntityResourceBuilder {
     return this;
   }
 
-  public build(): NestApiResourceInterface {
+  public build(): NestApiResourceDataInterface {
     return {
       id: this._id,
       type: this._type,

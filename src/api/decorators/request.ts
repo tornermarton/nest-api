@@ -36,7 +36,7 @@ import {
   NestApiQueryMetadata,
 } from '../metadata';
 import {
-  NestApiEntityRequestDocument,
+  NestApiResourceRequestDocument,
   NestApiRelationshipRequestDocument,
   NestApiRelationshipsRequestDocument,
 } from '../models';
@@ -102,7 +102,7 @@ export const NestApiEntityRequestBody = (): ParameterDecorator => {
     // TODO: fix typing
     const paramMetadata: any = Reflect.getMetadata(key, target, propertyKey);
     const type: Type = paramMetadata[parameterIndex];
-    const document: Type = NestApiEntityRequestDocument(type);
+    const document: Type = NestApiResourceRequestDocument(type);
 
     Body(
       new NestApiRequestBodyValidationPipe(document),
@@ -173,7 +173,7 @@ export const NestApiEntityRequest = <TModel extends Type>(
   type: TModel,
   options?: ApiBodyOptions,
 ): MethodDecorator => {
-  const document: Type = NestApiEntityRequestDocument(type);
+  const document: Type = NestApiResourceRequestDocument(type);
 
   return applyDecorators(
     ApiExtraModels(document),
