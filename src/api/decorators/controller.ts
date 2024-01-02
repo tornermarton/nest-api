@@ -8,8 +8,8 @@ type NestApiControllerOptions = {
   auth: boolean;
 };
 
-export const NestApiController = <TEntity extends Entity>(
-  entity: Type<TEntity>,
+export const NestApiController = <TResource extends Entity>(
+  entity: Type<TResource>,
   options?: NestApiControllerOptions,
 ): ClassDecorator => {
   // eslint-disable-next-line @typescript-eslint/ban-types

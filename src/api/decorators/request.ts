@@ -20,9 +20,10 @@ import {
   isNotNullOrUndefined,
   isNullOrUndefined,
 } from '../../core';
+import { ResourceRelationshipKey } from '../../modules';
 import { RelationshipDescriptor } from '../../repository';
 import {
-  NestApiEntityRequestBodyTransformationPipe,
+  NestApiResourceRequestBodyTransformationPipe,
   NestApiRelationshipRequestBodyTransformationPipe,
   NestApiRelationshipsRequestBodyTransformationPipe,
   NestApiRequestBodyDataTransformationPipe,
@@ -92,7 +93,7 @@ export const NestApiRequestQuery = (): ParameterDecorator => {
   };
 };
 
-export const NestApiEntityRequestBody = (): ParameterDecorator => {
+export const NestApiResourceRequestBody = (): ParameterDecorator => {
   return (
     target: object,
     propertyKey: string | symbol,
@@ -107,16 +108,16 @@ export const NestApiEntityRequestBody = (): ParameterDecorator => {
     Body(
       new NestApiRequestBodyValidationPipe(document),
       new NestApiRequestBodyDataTransformationPipe(),
-      new NestApiEntityRequestBodyTransformationPipe(type),
+      new NestApiResourceRequestBodyTransformationPipe(type),
     )(target, propertyKey, parameterIndex);
   };
 };
 
 export const NestApiRelationshipRequestBody = <
-  TEntity extends Entity,
-  TKey extends Extract<keyof TEntity, string>,
+  TResource extends Entity,
+  TKey extends ResourceRelationshipKey<TResource>,
 >(
-  type: Type<TEntity>,
+  type: Type<TResource>,
   key: TKey,
 ): ParameterDecorator => {
   return (
@@ -146,10 +147,10 @@ export const NestApiRelationshipRequestBody = <
 };
 
 export const NestApiRelationshipsRequestBody = <
-  TEntity extends Entity,
-  TKey extends Extract<keyof TEntity, string>,
+  TResource extends Entity,
+  TKey extends ResourceRelationshipKey<TResource>,
 >(
-  type: Type<TEntity>,
+  type: Type<TResource>,
   key: TKey,
 ): ParameterDecorator => {
   return (
@@ -169,8 +170,8 @@ export const NestApiRelationshipsRequestBody = <
   };
 };
 
-export const NestApiEntityRequest = <TModel extends Type>(
-  type: TModel,
+export const NestApiResourceRequest = <TResource>(
+  type: Type<TResource>,
   options?: ApiBodyOptions,
 ): MethodDecorator => {
   const document: Type = NestApiResourceRequestDocument(type);
@@ -185,10 +186,10 @@ export const NestApiEntityRequest = <TModel extends Type>(
 };
 
 export const NestApiRelationshipRequest = <
-  TEntity extends Entity,
-  TKey extends Extract<keyof TEntity, string>,
+  TResource extends Entity,
+  TKey extends ResourceRelationshipKey<TResource>,
 >(
-  type: Type<TEntity>,
+  type: Type<TResource>,
   key: TKey,
   options?: ApiBodyOptions,
 ): MethodDecorator => {
@@ -215,10 +216,10 @@ export const NestApiRelationshipRequest = <
 };
 
 export const NestApiRelationshipsRequest = <
-  TEntity extends Entity,
-  TKey extends Extract<keyof TEntity, string>,
+  TResource extends Entity,
+  TKey extends ResourceRelationshipKey<TResource>,
 >(
-  type: Type<TEntity>,
+  type: Type<TResource>,
   key: TKey,
   options?: ApiBodyOptions,
 ): MethodDecorator => {

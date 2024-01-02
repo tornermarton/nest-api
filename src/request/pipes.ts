@@ -61,7 +61,7 @@ export class NestApiRequestBodyDataTransformationPipe
 }
 
 // TODO: use interface without links
-export class NestApiEntityRequestBodyTransformationPipe<T>
+export class NestApiResourceRequestBodyTransformationPipe<T>
   implements PipeTransform<NestApiResourceDataInterface>
 {
   constructor(private readonly type: Type<T>) {}

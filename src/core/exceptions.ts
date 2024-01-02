@@ -3,7 +3,7 @@ export class NestApiException extends Error {}
 export class MissingEnvironmentException extends NestApiException {}
 export class InvalidEnvironmentException extends NestApiException {}
 
-export class UnknownEntityException extends NestApiException {}
+export class UnknownResourceException extends NestApiException {}
 export class UnknownRelationshipException extends NestApiException {}
 export class MissingIdFieldException extends NestApiException {}
 

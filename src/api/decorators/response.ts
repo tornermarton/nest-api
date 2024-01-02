@@ -13,6 +13,7 @@ import {
 } from '@nestjs/swagger';
 
 import { Entity } from '../../core';
+import { ResourceRelationshipKey } from '../../modules';
 import { RelationshipDescriptor } from '../../repository';
 import { getRelationshipDescriptorByKey } from '../metadata';
 import {
@@ -58,7 +59,7 @@ export const NestApiResourcesResponse = <TResource extends Entity>(
 
 export const NestApiRelatedResourceResponse = <
   TResource extends Entity,
-  TKey extends Extract<keyof TResource, string>,
+  TKey extends ResourceRelationshipKey<TResource>,
 >(
   type: Type<TResource>,
   key: TKey,
@@ -87,7 +88,7 @@ export const NestApiRelatedResourceResponse = <
 
 export const NestApiRelatedResourcesResponse = <
   TResource extends Entity,
-  TKey extends Extract<keyof TResource, string>,
+  TKey extends ResourceRelationshipKey<TResource>,
 >(
   type: Type<TResource>,
   key: TKey,
@@ -109,7 +110,7 @@ export const NestApiRelatedResourcesResponse = <
 
 export const NestApiRelationshipResponse = <
   TResource extends Entity,
-  TKey extends Extract<keyof TResource, string>,
+  TKey extends ResourceRelationshipKey<TResource>,
 >(
   type: Type<TResource>,
   key: TKey,
@@ -138,7 +139,7 @@ export const NestApiRelationshipResponse = <
 
 export const NestApiRelationshipsResponse = <
   TResource extends Entity,
-  TKey extends Extract<keyof TResource, string>,
+  TKey extends ResourceRelationshipKey<TResource>,
 >(
   type: Type<TResource>,
   key: TKey,

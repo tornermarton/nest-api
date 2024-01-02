@@ -8,11 +8,11 @@ import {
 } from './metadata';
 import { Entity } from '../core';
 
-type CreateEntityDtoOmittedKeys<K extends readonly unknown[] | undefined> =
+type CreateResourceDtoOmittedKeys<K extends readonly unknown[] | undefined> =
   | keyof Entity
   | Exclude<K, undefined>[number];
 
-type PatchEntityDtoOmittedKeys<K extends readonly unknown[] | undefined> =
+type PatchResourceDtoOmittedKeys<K extends readonly unknown[] | undefined> =
   | Exclude<keyof Entity, 'id'>
   | Exclude<K, undefined>[number];
 
@@ -50,16 +50,16 @@ function copyMetadata<O extends Entity, N, K extends keyof O>(
   setResourceMetadata(newType.prototype, newMetadata);
 }
 
-export function CreateEntityDto<
+export function CreateResourceDto<
   T extends Entity,
   K extends Extract<keyof T, string> = never,
 >(
   type: Type<T>,
   omit?: readonly K[],
-): Type<Omit<T, CreateEntityDtoOmittedKeys<typeof omit>>> {
+): Type<Omit<T, CreateResourceDtoOmittedKeys<typeof omit>>> {
   const omittedKeys: readonly K[] = omit ?? [];
 
-  const newType: Type<Omit<T, CreateEntityDtoOmittedKeys<typeof omit>>> =
+  const newType: Type<Omit<T, CreateResourceDtoOmittedKeys<typeof omit>>> =
     OmitType(type, [
       ...omittedKeys,
       'id',
@@ -74,17 +74,17 @@ export function CreateEntityDto<
   return newType;
 }
 
-export function PatchEntityDto<
+export function PatchResourceDto<
   T extends Entity,
   K extends Extract<keyof T, string> = never,
 >(
   type: Type<T>,
   omit?: readonly K[],
-): Type<Partial<Omit<T, PatchEntityDtoOmittedKeys<typeof omit>>>> {
+): Type<Partial<Omit<T, PatchResourceDtoOmittedKeys<typeof omit>>>> {
   const omittedKeys: readonly K[] = omit ?? [];
 
   const newType: Type<
-    Partial<Omit<T, PatchEntityDtoOmittedKeys<typeof omit>>>
+    Partial<Omit<T, PatchResourceDtoOmittedKeys<typeof omit>>>
   > = PartialType(
     OmitType(type, [
       ...omittedKeys,

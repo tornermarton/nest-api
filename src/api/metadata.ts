@@ -10,9 +10,10 @@ import {
   Entity,
   isNotNullOrUndefined,
   isNullOrUndefined,
-  UnknownEntityException,
+  UnknownResourceException,
   UnknownRelationshipException,
 } from '../core';
+import { ResourceRelationshipKey } from '../modules';
 import { RelationshipDescriptor } from '../repository';
 
 export type NestApiResourceFieldsMetadata = {
@@ -48,7 +49,7 @@ export function getResourceMetadata(target: Function): NestApiResourceMetadata {
   );
 
   if (isNullOrUndefined(metadata)) {
-    throw new UnknownEntityException(
+    throw new UnknownResourceException(
       `Target [${target.name}] must be decorated  with @NestApiResource()`,
     );
   }
@@ -112,8 +113,8 @@ export function getInverseRelationshipDescriptor<TRelated extends Entity>({
   return relationship.descriptor;
 }
 
-export function getRelationshipDescriptors<TEntity extends Entity>(
-  type: Type<TEntity>,
+export function getRelationshipDescriptors<TResource extends Entity>(
+  type: Type<TResource>,
 ): RelationshipDescriptor<any>[] {
   const metadata: NestApiResourceMetadata = getResourceMetadata(type.prototype);
   const { relationships } = metadata.fields;
@@ -126,9 +127,9 @@ export function getRelationshipDescriptors<TEntity extends Entity>(
 }
 
 export function getRelationshipDescriptorByKey<
-  TEntity extends Entity,
-  TKey extends Extract<keyof TEntity, string>,
->(type: Type<TEntity>, key: TKey): RelationshipDescriptor {
+  TResource extends Entity,
+  TKey extends ResourceRelationshipKey<TResource>,
+>(type: Type<TResource>, key: TKey): RelationshipDescriptor {
   const metadata: NestApiResourceMetadata = getResourceMetadata(type.prototype);
 
   const descriptor: RelationshipDescriptor | undefined =

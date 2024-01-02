@@ -31,7 +31,7 @@ import {
   getNestApiCommonDocumentLinks,
   getNestApiDocumentPaging,
   getNestApiEntitiesDocumentLinks,
-  getNestApiEntityDocumentLinks,
+  getNestApiResourceDocumentLinks,
   getNestApiRelationshipDocumentLinks,
   getNestApiRelationshipsDocumentLinks,
 } from './utils';
@@ -82,23 +82,23 @@ export class ApiResponseInterceptor<T = unknown>
   ) {}
 
   // eslint-disable-next-line @typescript-eslint/ban-types
-  private transformEntity<T extends Function>(
-    entity?: T,
+  private transformResource<T extends Function>(
+    resource?: T,
   ): NestApiResourceDataInterface | null {
-    if (isNullOrUndefined(entity)) {
+    if (isNullOrUndefined(resource)) {
       return null;
     }
 
-    const metadata: NestApiResourceMetadata = getResourceMetadata(entity);
+    const metadata: NestApiResourceMetadata = getResourceMetadata(resource);
 
     if (isNullOrUndefined(metadata.fields.id)) {
       throw new MissingIdFieldException(
-        `Response entity [${entity.name}] must have an ID property decorated with @NestApiEntityId()`,
+        `Resource [${resource.name}] must have an ID property decorated with @NestApiResourceId()`,
       );
     }
 
     // TODO: might be a good idea to check type in the decorator
-    const id: string = entity[metadata.fields.id.name];
+    const id: string = resource[metadata.fields.id.name];
     const type: string = metadata.name;
 
     const builder: NestApiResourceBuilder = new NestApiResourceBuilder(
@@ -106,7 +106,7 @@ export class ApiResponseInterceptor<T = unknown>
       type,
     );
 
-    const obj: Record<string, unknown> = instanceToPlain(entity, {
+    const obj: Record<string, unknown> = instanceToPlain(resource, {
       excludeExtraneousValues: true,
     });
 
@@ -187,14 +187,14 @@ export class ApiResponseInterceptor<T = unknown>
         ) {
           return {
             meta: meta,
-            data: this.transformEntity(r.data),
-            links: getNestApiEntityDocumentLinks(
+            data: this.transformResource(r.data),
+            links: getNestApiResourceDocumentLinks(
               this.options?.baseUrl,
               request,
             ),
             included: r.included?.map((e) =>
               // eslint-disable-next-line @typescript-eslint/ban-types
-              this.transformEntity(e as Function),
+              this.transformResource(e as Function),
             ),
           };
         } else if (
@@ -203,12 +203,12 @@ export class ApiResponseInterceptor<T = unknown>
         ) {
           return {
             meta: meta,
-            data: r.data.map((e) => this.transformEntity(e)),
+            data: r.data.map((e) => this.transformResource(e)),
             links: getNestApiEntitiesDocumentLinks(baseUrl, request, r.total),
             paging: getNestApiDocumentPaging(request, r.total),
             included: r.included?.map((e) =>
               // eslint-disable-next-line @typescript-eslint/ban-types
-              this.transformEntity(e as Function),
+              this.transformResource(e as Function),
             ),
           };
         } else if (r instanceof RelationshipResponse) {

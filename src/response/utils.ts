@@ -8,7 +8,7 @@ import {
   NestApiRelationshipResponseDocumentLinks,
   NestApiCommonDocumentLinksInterface,
   NestApiEntitiesResponseDocumentLinksInterface,
-  NestApiEntityResponseDocumentLinksInterface,
+  NestApiResourceResponseDocumentLinksInterface,
 } from '../api';
 import { isNotNullOrUndefined } from '../core';
 import { IQueryResourcesDto, PageDto } from '../dto';
@@ -49,10 +49,10 @@ export function getNestApiCommonDocumentLinks(
   };
 }
 
-export function getNestApiEntityDocumentLinks(
+export function getNestApiResourceDocumentLinks(
   baseUrl: BaseUrl,
   request: Request,
-): NestApiEntityResponseDocumentLinksInterface {
+): NestApiResourceResponseDocumentLinksInterface {
   return getNestApiCommonDocumentLinks(baseUrl, request);
 }
 

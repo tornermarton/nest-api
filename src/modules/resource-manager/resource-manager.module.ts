@@ -13,23 +13,23 @@ import {
   RelationshipDescriptor,
 } from '../../repository';
 
-type EntityManagerModuleOptions = {
-  entities: Type[];
+type ResourceManagerModuleOptions = {
+  resources: Type[];
   repositoryModule: any;
 };
 
 @Module({})
 export class ResourceManagerModule {
   public static forFeature({
-    entities,
+    resources,
     repositoryModule,
-  }: EntityManagerModuleOptions): DynamicModule {
+  }: ResourceManagerModuleOptions): DynamicModule {
     // TODO: optimize this next part since it is very wasteful with double traversal of first map values
-    const entitiesMap: Map<string, Type> = new Map<string, Type>();
+    const resourcesMap: Map<string, Type> = new Map<string, Type>();
 
-    entities.forEach((type) => {
-      if (!entitiesMap.has(type.name)) {
-        entitiesMap.set(type.name, type);
+    resources.forEach((type) => {
+      if (!resourcesMap.has(type.name)) {
+        resourcesMap.set(type.name, type);
       }
     });
 
@@ -38,7 +38,7 @@ export class ResourceManagerModule {
       RelationshipDescriptor<any>
     >();
 
-    Array.from(entitiesMap.values())
+    Array.from(resourcesMap.values())
       .map((type) => getResourceMetadata(type.prototype))
       .map(({ fields }) => fields.relationships)
       .flat()
@@ -61,12 +61,12 @@ export class ResourceManagerModule {
     Array.from(relationshipsMap.values())
       .map(({ related }) => related())
       .forEach((type) => {
-        if (!entitiesMap.has(type.name)) {
-          entitiesMap.set(type.name, type);
+        if (!resourcesMap.has(type.name)) {
+          resourcesMap.set(type.name, type);
         }
       });
 
-    Array.from(entitiesMap.values())
+    Array.from(resourcesMap.values())
       .map((type) => getResourceMetadata(type.prototype))
       .map(({ fields }) => fields.relationships)
       .flat()
@@ -86,8 +86,7 @@ export class ResourceManagerModule {
         }
       });
 
-    // TODO: rename this instead of reassignment
-    entities = Array.from(entitiesMap.values());
+    const entities = Array.from(resourcesMap.values());
 
     const relationships: RelationshipDescriptor[] = Array.from(
       relationshipsMap.values(),
@@ -111,7 +110,7 @@ export class ResourceManagerModule {
         const relationshipDefinitions = relationships.map(
           (descriptor, index) => ({
             descriptor,
-            repository: repositories[entities.length + index],
+            repository: repositories[entityTokens.length + index],
           }),
         );
 
@@ -123,7 +122,7 @@ export class ResourceManagerModule {
       inject: [...entityTokens, ...relationshipTokens],
     };
 
-    const managerProviders: FactoryProvider[] = entities.map((type) => ({
+    const managerProviders: FactoryProvider[] = resources.map((type) => ({
       provide: getResourceManagerToken(type),
       useFactory: (service: ResourceManagerService) => service.get(type),
       inject: [ResourceManagerService],
