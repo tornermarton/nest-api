@@ -79,10 +79,11 @@ export type ResourceUpdateDto<TResource> = EntityUpdateDto<
 > &
   Partial<ResourceRelationships<TResource>>;
 
-export type ResourceManagerEntityDefinition<TEntity extends Entity = Entity> = {
-  type: Type<TEntity>;
-  repository: EntityRepository<TEntity>;
-};
+export type ResourceManagerEntityDefinition<TResource extends Entity = Entity> =
+  {
+    type: Type<ResourceEntity<TResource>>;
+    repository: EntityRepository<ResourceEntity<TResource>>;
+  };
 
 export type ResourceManagerRelationshipDefinition<
   TRelated extends Entity = Entity,
@@ -110,28 +111,12 @@ type TypedRelatedResponse<T> = [T] extends [Array<infer E>]
   : RelatedResourceResponse<RelatedResourceType<T>>;
 
 export class ResourceManager<TResource extends Entity = Entity> {
-  private readonly _service: ResourceManagerService;
-
-  private readonly _resource: Type<TResource>;
-
-  private readonly _entity: ResourceManagerEntityDefinition<
-    ResourceEntity<TResource>
-  >;
-  private readonly _relationships: ResourceManagerRelationshipDefinitions<TResource>;
-
   constructor(
-    service: ResourceManagerService,
-    resource: Type<TResource>,
-    entity: ResourceManagerEntityDefinition<ResourceEntity<TResource>>,
-    relationships: ResourceManagerRelationshipDefinitions<TResource>,
-  ) {
-    this._service = service;
-
-    this._resource = resource;
-
-    this._entity = entity;
-    this._relationships = relationships;
-  }
+    private readonly _service: ResourceManagerService,
+    private readonly _resource: Type<TResource>,
+    private readonly _entity: ResourceManagerEntityDefinition<TResource>,
+    private readonly _relationships: ResourceManagerRelationshipDefinitions<TResource>,
+  ) {}
 
   private getRelationshipKeys(): ResourceRelationshipKey<TResource>[] {
     return Object.keys(
@@ -265,7 +250,14 @@ export class ResourceManager<TResource extends Entity = Entity> {
     { id, createdBy }: ResourceEntity<TResource>,
     dto: ResourceCreateDto<TResource> | ResourceUpdateDto<TResource>,
   ): Observable<void> {
-    const observables$: Observable<unknown>[] = this.getRelationshipKeys().map(
+    const relationshipKeys = this.getRelationshipKeys();
+
+    if (relationshipKeys.length < 1) {
+      // must return void, not EMPTY since it is used with delayWhen()
+      return of(void 0);
+    }
+
+    const observables$: Observable<unknown>[] = relationshipKeys.map(
       <TKey extends ResourceRelationshipKey<TResource>>(key: TKey) => {
         if (isNullOrUndefined(dto[key])) {
           return of([]);
