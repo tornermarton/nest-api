@@ -7,16 +7,10 @@ import {
 
 export const InjectEntityRepository = (
   type: Type,
-): ((
-  target: object,
-  key: string | symbol | undefined,
-  index?: number,
-) => void) => Inject(getEntityRepositoryToken(type));
+): PropertyDecorator & ParameterDecorator =>
+  Inject(getEntityRepositoryToken(type));
 
 export const InjectRelationshipRepository = (
   name: string,
-): ((
-  target: object,
-  key: string | symbol | undefined,
-  index?: number,
-) => void) => Inject(getRelationshipRepositoryToken(name));
+): PropertyDecorator & ParameterDecorator =>
+  Inject(getRelationshipRepositoryToken(name));

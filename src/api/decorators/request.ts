@@ -59,9 +59,15 @@ const SilentQuery = createParamDecorator(
 export const NestApiRequestQuery = (): ParameterDecorator => {
   return (
     target: object,
-    propertyKey: string | symbol,
+    propertyKey: string | symbol | undefined,
     parameterIndex: number,
-  ) => {
+  ): void => {
+    if (isNullOrUndefined(propertyKey)) {
+      throw new InvalidDecoratedPropertyException(
+        'Could not get property descriptor',
+      );
+    }
+
     const descriptor: PropertyDescriptor | undefined =
       Object.getOwnPropertyDescriptor(target, propertyKey);
 
@@ -73,7 +79,7 @@ export const NestApiRequestQuery = (): ParameterDecorator => {
 
     const key: string = 'design:paramtypes';
     // TODO: fix typing
-    const paramMetadata: any = Reflect.getMetadata(key, target, propertyKey);
+    const paramMetadata = Reflect.getMetadata(key, target, propertyKey);
     const type: Type = paramMetadata[parameterIndex];
 
     const metadata: NestApiQueryMetadata = getQueryMetadata(type.prototype);
@@ -96,12 +102,18 @@ export const NestApiRequestQuery = (): ParameterDecorator => {
 export const NestApiResourceRequestBody = (): ParameterDecorator => {
   return (
     target: object,
-    propertyKey: string | symbol,
+    propertyKey: string | symbol | undefined,
     parameterIndex: number,
-  ) => {
+  ): void => {
+    if (isNullOrUndefined(propertyKey)) {
+      throw new InvalidDecoratedPropertyException(
+        'Could not get property descriptor',
+      );
+    }
+
     const key: string = 'design:paramtypes';
     // TODO: fix typing
-    const paramMetadata: any = Reflect.getMetadata(key, target, propertyKey);
+    const paramMetadata = Reflect.getMetadata(key, target, propertyKey);
     const type: Type = paramMetadata[parameterIndex];
     const document: Type = NestApiResourceRequestDocument(type);
 
@@ -122,9 +134,9 @@ export const NestApiRelationshipRequestBody = <
 ): ParameterDecorator => {
   return (
     target: object,
-    propertyKey: string | symbol,
+    propertyKey: string | symbol | undefined,
     parameterIndex: number,
-  ) => {
+  ): void => {
     const descriptor: RelationshipDescriptor = getRelationshipDescriptorByKey(
       type,
       key,
@@ -155,9 +167,9 @@ export const NestApiRelationshipsRequestBody = <
 ): ParameterDecorator => {
   return (
     target: object,
-    propertyKey: string | symbol,
+    propertyKey: string | symbol | undefined,
     parameterIndex: number,
-  ) => {
+  ): void => {
     const { related } = getRelationshipDescriptorByKey(type, key);
 
     const document: Type = NestApiRelationshipsRequestDocument(related());
