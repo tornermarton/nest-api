@@ -54,11 +54,11 @@ export class EndpointMatcher {
 
   private isMatch(
     definition: EndpointDefinition,
-    url: string,
+    path: string,
     method: RequestMethod,
   ): boolean {
     return (
-      definition.path === url &&
+      definition.path === path &&
       (definition.method === method || definition.method === RequestMethod.ALL)
     );
   }

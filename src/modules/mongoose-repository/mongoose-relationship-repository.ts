@@ -33,7 +33,7 @@ import {
   RelationshipRepository,
 } from '../../repository';
 
-export type MongooseRelationshipDefinition<TRelated extends Entity> = {
+export type MongooseRelationshipDefinition<TRelated extends Entity = Entity> = {
   descriptor: RelationshipDescriptor<TRelated>;
   model: Model<MongooseRelationship>;
 };
@@ -42,9 +42,9 @@ export class MongooseRelationshipRepository<
   TRelated extends MongooseEntity,
 > extends RelationshipRepository<TRelated> {
   constructor(
-    private readonly _connection: Connection,
-    private readonly _definition: MongooseRelationshipDefinition<TRelated>,
-    private readonly _inverseDefinition?: MongooseRelationshipDefinition<any>,
+    private readonly connection: Connection,
+    private readonly definition: MongooseRelationshipDefinition<TRelated>,
+    private readonly inverseDefinition?: MongooseRelationshipDefinition,
   ) {
     super();
   }
@@ -52,7 +52,7 @@ export class MongooseRelationshipRepository<
   private runAsTransaction<T>(
     method: (session: ClientSession) => Observable<T>,
   ): Observable<T> {
-    return from(this._connection.startSession()).pipe(
+    return from(this.connection.startSession()).pipe(
       concatMap((session) =>
         of(void 0).pipe(
           tap(() => session.startTransaction()),
@@ -83,7 +83,7 @@ export class MongooseRelationshipRepository<
   }
 
   private transformRelated(entity: unknown): TRelated {
-    return plainToInstance(this._definition.descriptor.related(), entity, {
+    return plainToInstance(this.definition.descriptor.related(), entity, {
       excludeExtraneousValues: true,
     });
   }
@@ -94,11 +94,11 @@ export class MongooseRelationshipRepository<
     id2set: string[],
     createdBy: string,
   ): Observable<unknown> {
-    if (isNullOrUndefined(this._inverseDefinition)) {
+    if (isNullOrUndefined(this.inverseDefinition)) {
       return of(void 0);
     }
 
-    const { model } = this._inverseDefinition;
+    const { model } = this.inverseDefinition;
 
     const queries = id2set
       .map((id2) => ({
@@ -124,7 +124,7 @@ export class MongooseRelationshipRepository<
     id2set: string[],
     createdBy: string,
   ): Observable<unknown> {
-    const { model } = this._definition;
+    const { model } = this.definition;
 
     const queries = id2set
       .map((id2) => ({
@@ -149,11 +149,11 @@ export class MongooseRelationshipRepository<
     id1: string,
     id2set?: string[],
   ): Observable<unknown> {
-    if (isNullOrUndefined(this._inverseDefinition)) {
+    if (isNullOrUndefined(this.inverseDefinition)) {
       return of(void 0);
     }
 
-    const { model } = this._inverseDefinition;
+    const { model } = this.inverseDefinition;
 
     const filter = { id2: id1 };
 
@@ -172,7 +172,7 @@ export class MongooseRelationshipRepository<
     id1: string,
     id2set?: string[],
   ): Observable<unknown> {
-    const { model } = this._definition;
+    const { model } = this.definition;
 
     const filter = { id1 };
 
@@ -214,7 +214,7 @@ export class MongooseRelationshipRepository<
     id1: string,
     query: IQueryRelationshipsDto<TFilter>,
   ): Observable<number> {
-    const { model, descriptor } = this._definition;
+    const { model, descriptor } = this.definition;
 
     if (isNullOrUndefined(query.filter)) {
       const req = model.find({ id1 }).countDocuments();
@@ -246,7 +246,7 @@ export class MongooseRelationshipRepository<
     id1: string,
     query: IQueryRelationshipsDto<TFilter>,
   ): Observable<Relationship[]> {
-    const { model, descriptor } = this._definition;
+    const { model, descriptor } = this.definition;
 
     if (isNullOrUndefined(query.filter)) {
       const req = model
@@ -292,7 +292,7 @@ export class MongooseRelationshipRepository<
     id1: string,
     query: IQueryRelationshipsDto<TFilter>,
   ): Observable<number> {
-    const { model, descriptor } = this._definition;
+    const { model, descriptor } = this.definition;
 
     if (isNullOrUndefined(query.filter)) {
       const req = model.find({ id1 }).countDocuments();
@@ -324,7 +324,7 @@ export class MongooseRelationshipRepository<
     id1: string,
     query: IQueryRelationshipsDto<TFilter>,
   ): Observable<TRelated[]> {
-    const { model, descriptor } = this._definition;
+    const { model, descriptor } = this.definition;
 
     // TODO: this method is very expensive but currently will suffice, should probably start from related direction
     const relationshipsFilter = { id1 };
@@ -356,7 +356,7 @@ export class MongooseRelationshipRepository<
     return this.runAsTransaction((session) =>
       of(void 0).pipe(
         concatMap(() => {
-          if (this._definition.descriptor.kind === 'toMany') {
+          if (this.definition.descriptor.kind === 'toMany') {
             return this._create(session, id1, id2set, createdBy);
           }
 
@@ -369,7 +369,7 @@ export class MongooseRelationshipRepository<
           return this._update(session, id1, id2set, createdBy);
         }),
         concatMap(() => {
-          if (this._inverseDefinition?.descriptor.kind === 'toMany') {
+          if (this.inverseDefinition?.descriptor.kind === 'toMany') {
             return this._createInverse(session, id1, id2set, createdBy);
           }
 
@@ -383,7 +383,7 @@ export class MongooseRelationshipRepository<
   }
 
   public read(id1: string, id2set?: string[]): Observable<Relationship[]> {
-    const { model } = this._definition;
+    const { model } = this.definition;
 
     const relationshipsFilter = { id1 };
 
@@ -400,7 +400,7 @@ export class MongooseRelationshipRepository<
   }
 
   public readRelated(id1: string, id2set?: string[]): Observable<TRelated[]> {
-    const { model, descriptor } = this._definition;
+    const { model, descriptor } = this.definition;
 
     const relationshipsFilter = { id1 };
 

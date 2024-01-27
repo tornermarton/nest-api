@@ -36,11 +36,11 @@ function createBaseUrlString(baseUrl: BaseUrl): string {
 }
 
 export async function createApplication(
-  module: any,
+  module: unknown,
   { title, name, version, baseUrl, exclude, debug }: ApplicationOptions,
 ): Promise<NestExpressApplication> {
   const prefix: string = createGlobalApiPrefix(name, version);
-  const logger: LoggerService = createApplicationLogger(name, { debug });
+  const logger: LoggerService = createApplicationLogger({ debug });
 
   const app: NestExpressApplication =
     await NestFactory.create<NestExpressApplication>(module, { logger });
@@ -57,7 +57,6 @@ export async function createApplication(
   );
   const filter: ApiResponseExceptionFilter = new ApiResponseExceptionFilter(
     server,
-    matcher,
     { baseUrl },
   );
 

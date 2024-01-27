@@ -13,7 +13,7 @@ import { Passport } from '../interfaces';
 
 @Injectable()
 export class AuthenticationGuard implements CanActivate {
-  constructor(private readonly _jwtService: JwtService) {}
+  constructor(private readonly jwtService: JwtService) {}
 
   private getPassportFromRequest(request: Request): string | undefined {
     const key: string = AUTH_PASSPORT_HEADER.toLowerCase();
@@ -31,9 +31,11 @@ export class AuthenticationGuard implements CanActivate {
     }
 
     try {
-      request['user'] = this._jwtService.verify<Passport>(token);
-    } catch (error) {
-      throw new UnauthorizedException('Authentication passport malformed');
+      request['user'] = this.jwtService.verify<Passport>(token);
+    } catch (cause) {
+      throw new UnauthorizedException('Authentication passport malformed', {
+        cause,
+      });
     }
 
     return true;

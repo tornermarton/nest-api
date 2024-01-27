@@ -54,8 +54,8 @@ export type NestApiResourceDataInterface =
   };
 
 export type NestApiDocumentMetaInterface = {
-  readonly status: number;
   readonly timestamp: Date;
+  readonly status: number;
   readonly reason?: string;
 };
 

@@ -1,16 +1,13 @@
-import {
-  BadRequestException,
-  HttpException,
-  HttpStatus,
-  NotFoundException,
-  UnprocessableEntityException,
-  ValidationError,
-} from '@nestjs/common';
+import { HttpException, HttpStatus, ValidationError } from '@nestjs/common';
 
 import { NestApiBodyErrorInterface, NestApiQueryErrorInterface } from '../api';
+import {
+  NestApiBadRequestException,
+  NestApiUnprocessableEntityException,
+} from '../core';
 
 export const UUID_VALIDATION_EXCEPTION_FACTORY = (): HttpException =>
-  new NotFoundException();
+  new NestApiUnprocessableEntityException();
 
 function processQueryErrors(
   errors: ValidationError[],
@@ -21,26 +18,28 @@ function processQueryErrors(
       const parent = parameter ? `${parameter}.` : '';
       const path = `${parent}${error.property}`;
 
-      const errors: NestApiQueryErrorInterface[] = Object.values(
+      const currentErrors: NestApiQueryErrorInterface[] = Object.values(
         error.constraints ?? {},
       ).map((constraint) => ({
         status: HttpStatus.BAD_REQUEST,
-        source: { parameter: path },
         title: 'Invalid Query Parameter',
         detail: constraint,
+        source: { parameter: path },
       }));
 
-      errors.push(...processQueryErrors(error.children ?? [], path));
+      const childrenErrors: NestApiQueryErrorInterface[] = processQueryErrors(
+        error.children ?? [],
+        path,
+      );
 
-      return errors;
+      return [...currentErrors, ...childrenErrors];
     })
     .flat();
 }
 
 export const QUERY_VALIDATION_EXCEPTION_FACTORY = (
   errors: ValidationError[],
-): HttpException =>
-  new BadRequestException({ errors: processQueryErrors(errors) });
+): HttpException => new NestApiBadRequestException(processQueryErrors(errors));
 
 function processBodyErrors(
   errors: ValidationError[],
@@ -50,23 +49,26 @@ function processBodyErrors(
     .map((error) => {
       const path = `${pointer}/${error.property}`;
 
-      const errors: NestApiBodyErrorInterface[] = Object.values(
+      const currentErrors: NestApiBodyErrorInterface[] = Object.values(
         error.constraints ?? {},
       ).map((constraint) => ({
         status: HttpStatus.UNPROCESSABLE_ENTITY,
-        source: { pointer: path },
         title: 'Invalid Body Attribute',
         detail: constraint,
+        source: { pointer: path },
       }));
 
-      errors.push(...processBodyErrors(error.children ?? [], path));
+      const childrenErrors: NestApiBodyErrorInterface[] = processBodyErrors(
+        error.children ?? [],
+        path,
+      );
 
-      return errors;
+      return [...currentErrors, ...childrenErrors];
     })
-    .reduce((acc, e) => [...acc, ...e], []);
+    .flat();
 }
 
 export const BODY_VALIDATION_EXCEPTION_FACTORY = (
   errors: ValidationError[],
 ): HttpException =>
-  new UnprocessableEntityException({ errors: processBodyErrors(errors) });
+  new NestApiUnprocessableEntityException(processBodyErrors(errors));

@@ -45,12 +45,9 @@ import {
 } from '../api';
 import { isNullOrUndefined, MissingIdFieldException } from '../core';
 
-type RequestMatcherOptions = {
-  exclude?: EndpointDefinition[];
-};
-
 type ApiResponseInterceptorOptions = {
   baseUrl: BaseUrl;
+  exclude?: EndpointDefinition[];
 };
 
 @Injectable()
@@ -58,7 +55,7 @@ export class ApiResponseInterceptor<T = unknown>
   implements NestInterceptor<T, NestApiResponseDocumentInterface | T>
 {
   public static forRoot(
-    options: ApiResponseInterceptorOptions & RequestMatcherOptions,
+    options: ApiResponseInterceptorOptions,
   ): FactoryProvider {
     return {
       provide: APP_INTERCEPTOR,
@@ -171,13 +168,13 @@ export class ApiResponseInterceptor<T = unknown>
 
     return next.handle().pipe(
       map((r) => {
-        const status: number = response.statusCode;
         const timestamp: Date = new Date();
+        const status: number = response.statusCode;
         const reason: string = getReasonPhrase(status);
 
         const meta: NestApiDocumentMetaInterface = {
-          status,
           timestamp,
+          status,
           reason,
         };
 

@@ -3,58 +3,54 @@ import 'reflect-metadata';
 import {
   ArgumentsHost,
   Catch,
+  ExceptionFilter,
   FactoryProvider,
   HttpException,
   HttpServer,
   HttpStatus,
   Logger,
 } from '@nestjs/common';
-import {
-  AbstractHttpAdapter,
-  APP_FILTER,
-  BaseExceptionFilter,
-} from '@nestjs/core';
+import { AbstractHttpAdapter, APP_FILTER } from '@nestjs/core';
 import { HttpAdapterHost } from '@nestjs/core/helpers/http-adapter-host';
 import { Request, Response } from 'express';
 import { getReasonPhrase } from 'http-status-codes';
 
-import { EndpointDefinition, EndpointMatcher } from './endpoint-matcher';
 import { BaseUrl } from './models';
 import { getNestApiCommonDocumentLinks } from './utils';
 import {
   NestApiDocumentMetaInterface,
-  NestApiErrorDocumentInterface,
   NestApiErrorDocumentLinksInterface,
   NestApiErrorInterface,
-  NestApiGenericErrorInterface,
 } from '../api';
-
-type RequestMatcherOptions = {
-  exclude?: EndpointDefinition[];
-};
+import { isNotNullOrUndefined, NestApiHttpException } from '../core';
 
 type ApiResponseExceptionFilterOptions = {
   baseUrl: BaseUrl;
 };
 
+type ExceptionInfo = {
+  errors: NestApiErrorInterface[];
+  message: string;
+  stack?: string;
+  // TODO: is a recursion really necessary?
+  cause?: ExceptionInfo;
+};
+
 @Catch()
-export class ApiResponseExceptionFilter<
-  T = unknown,
-> extends BaseExceptionFilter<T> {
-  public static forRoot<T = unknown>(
-    options: ApiResponseExceptionFilterOptions & RequestMatcherOptions,
+export class ApiResponseExceptionFilter implements ExceptionFilter<unknown> {
+  public static DEFAULT_STATUS: number = HttpStatus.INTERNAL_SERVER_ERROR;
+
+  public static forRoot(
+    options: ApiResponseExceptionFilterOptions,
   ): FactoryProvider {
     return {
       provide: APP_FILTER,
       useFactory: (
         httpAdapterHost: HttpAdapterHost,
-      ): ApiResponseExceptionFilter<T> => {
+      ): ApiResponseExceptionFilter => {
         const adapter: AbstractHttpAdapter = httpAdapterHost.httpAdapter;
-        const exclude: EndpointDefinition[] = options.exclude ?? [];
 
-        const matcher: EndpointMatcher = new EndpointMatcher(adapter, exclude);
-
-        return new ApiResponseExceptionFilter(adapter, matcher, options);
+        return new ApiResponseExceptionFilter(adapter, options);
       },
       inject: [HttpAdapterHost],
     };
@@ -64,98 +60,101 @@ export class ApiResponseExceptionFilter<
 
   constructor(
     private readonly server: HttpServer,
-    private readonly matcher: EndpointMatcher,
     private readonly options: ApiResponseExceptionFilterOptions,
-  ) {
-    super();
+  ) {}
+
+  private getStatus(exception: unknown): number {
+    if (exception instanceof HttpException) {
+      return exception.getStatus();
+    }
+
+    return ApiResponseExceptionFilter.DEFAULT_STATUS;
   }
 
-  private getStatus(exception: T): number {
-    return exception instanceof HttpException
-      ? exception.getStatus()
-      : HttpStatus.INTERNAL_SERVER_ERROR;
-  }
-
-  private getReason(status: number): string {
-    return getReasonPhrase(status);
-  }
-
-  private createGenericErrors(
-    status: number,
-    title: string,
-  ): NestApiGenericErrorInterface[] {
-    return [{ status, title }];
-  }
-
-  private getErrors(
-    exception: T,
-    status: number,
-    title: string,
+  private getErrorsFromNestApiHttpException(
+    exception: NestApiHttpException,
   ): NestApiErrorInterface[] {
-    if (!(exception instanceof HttpException)) {
-      return this.createGenericErrors(status, title);
-    }
-
-    const response: object | string = exception.getResponse();
-
-    if (typeof response !== 'object') {
-      return this.createGenericErrors(status, title);
-    }
-
-    if ('errors' in response) {
-      // The validation errors are already in the correct format
-      return response['errors'] as NestApiErrorInterface[];
-    }
-
-    let detail: string | undefined = undefined;
-
-    if (
-      status < 500 &&
-      'message' in response &&
-      typeof response['message'] === 'string'
-    ) {
-      detail = response['message'];
-    }
-
-    return [{ status, title, detail }];
+    return exception.errors;
   }
 
-  private log(exception: T): void {
+  private getExceptionInfo(exception: unknown): ExceptionInfo {
+    if (exception instanceof NestApiHttpException) {
+      const { errors, message, stack, cause } = exception;
+
+      if (isNotNullOrUndefined(cause)) {
+        return { errors, message, stack, cause: this.getExceptionInfo(cause) };
+      }
+
+      return { errors, message, stack };
+    }
+
+    if (exception instanceof HttpException) {
+      const { message, stack, cause } = exception;
+
+      const status: number = exception.getStatus();
+      const title: string = getReasonPhrase(status);
+      const detail: string | undefined =
+        message !== title ? message : undefined;
+
+      const errors: NestApiErrorInterface[] = [{ status, title, detail }];
+
+      if (isNotNullOrUndefined(cause)) {
+        return { errors, message, stack, cause: this.getExceptionInfo(cause) };
+      }
+
+      return { errors, message, stack };
+    }
+
     if (exception instanceof Error) {
-      this.logger.error(exception.message, exception.stack);
-    } else {
-      this.logger.error(exception);
+      const { message, stack } = exception;
+
+      const status: number = ApiResponseExceptionFilter.DEFAULT_STATUS;
+      const title: string = getReasonPhrase(status);
+      const detail: string | undefined =
+        message.trim() !== '' ? message : undefined;
+
+      const errors: NestApiErrorInterface[] = [{ status, title, detail }];
+
+      return { errors, message, stack };
     }
+
+    const status: number = ApiResponseExceptionFilter.DEFAULT_STATUS;
+    const title: string = getReasonPhrase(status);
+    const detail: string | undefined =
+      typeof exception === 'string' ? exception : undefined;
+
+    const errors: NestApiErrorInterface[] = [{ status, title, detail }];
+    const message: string = detail ?? title;
+
+    return { errors, message };
   }
 
-  public override catch(exception: T, host: ArgumentsHost): void {
-    const { baseUrl } = this.options;
-
+  public catch(exception: unknown, host: ArgumentsHost): void {
     const request: Request = host.switchToHttp().getRequest<Request>();
     const response: Response = host.switchToHttp().getResponse<Response>();
 
-    if (this.matcher.match(request)) {
-      return super.catch(exception, host);
-    }
+    const { baseUrl } = this.options;
 
-    this.log(exception);
-
-    const status: number = this.getStatus(exception);
     const timestamp: Date = new Date();
-    const reason: string = this.getReason(status);
-    const meta: NestApiDocumentMetaInterface = { status, timestamp, reason };
-
-    const errors: NestApiErrorInterface[] = this.getErrors(
-      exception,
-      status,
-      reason,
-    );
+    const status: number = this.getStatus(exception);
+    const reason: string = getReasonPhrase(status);
+    const meta: NestApiDocumentMetaInterface = { timestamp, status, reason };
 
     const links: NestApiErrorDocumentLinksInterface =
       getNestApiCommonDocumentLinks(baseUrl, request);
 
-    const body: NestApiErrorDocumentInterface = { meta, errors, links };
+    const { errors, message, stack, cause } = this.getExceptionInfo(exception);
 
-    this.server.reply(response, body, status);
+    if (status < 500) {
+      this.logger.warn({ message, errors, cause });
+
+      const body = { meta, errors, links };
+      this.server.reply(response, body, status);
+    } else {
+      this.logger.error({ message, errors, cause }, stack);
+
+      const body = { meta, errors: [{ status, title: reason }], links };
+      this.server.reply(response, body, status);
+    }
   }
 }

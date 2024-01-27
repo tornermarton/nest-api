@@ -327,10 +327,10 @@ export function NestApiResourceData(
 
 export class NestApiDocumentMeta {
   @ApiProperty()
-  public readonly status: number;
+  public readonly timestamp: Date;
 
   @ApiProperty()
-  public readonly timestamp: Date;
+  public readonly status: number;
 
   @ApiProperty()
   public readonly reason: string;

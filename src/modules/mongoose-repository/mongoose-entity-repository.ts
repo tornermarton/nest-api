@@ -18,14 +18,14 @@ export class MongooseEntityRepository<
   TEntity extends MongooseEntity,
 > extends EntityRepository<TEntity> {
   constructor(
-    private readonly _type: Type<TEntity>,
-    private readonly _model: Model<TEntity>,
+    private readonly type: Type<TEntity>,
+    private readonly model: Model<TEntity>,
   ) {
     super();
   }
 
   private transform(entity: unknown): TEntity {
-    return plainToInstance(this._type, entity, {
+    return plainToInstance(this.type, entity, {
       excludeExtraneousValues: true,
     });
   }
@@ -35,7 +35,7 @@ export class MongooseEntityRepository<
   ): Observable<number> {
     const filter = filterDtoToQuery(query.filter ?? {});
 
-    return from(this._model.find(filter).countDocuments().exec());
+    return from(this.model.find(filter).countDocuments().exec());
   }
 
   public find<TFilter>(
@@ -44,7 +44,7 @@ export class MongooseEntityRepository<
     const filter = filterDtoToQuery(query.filter ?? {});
     const sort = sortDtoToQuery(query.sort ?? []);
 
-    const req = this._model
+    const req = this.model
       .find(filter)
       .sort(sort)
       .skip(query.page.offset)
@@ -59,14 +59,14 @@ export class MongooseEntityRepository<
   }
 
   public create(dto: EntityCreateDto<TEntity>): Observable<TEntity> {
-    return from(new this._model(dto).save()).pipe(
+    return from(new this.model(dto).save()).pipe(
       map((entity) => entity.toObject()),
       map((entity) => this.transform(entity)),
     );
   }
 
   public read(id: string): Observable<TEntity | null> {
-    return from(this._model.findById(id).exec()).pipe(
+    return from(this.model.findById(id).exec()).pipe(
       map((result) => {
         if (isNotNullOrUndefined(result)) {
           const entity = result.toObject();
@@ -84,7 +84,7 @@ export class MongooseEntityRepository<
     dto: EntityUpdateDto<TEntity>,
   ): Observable<TEntity | null> {
     return from(
-      this._model
+      this.model
         .findByIdAndUpdate(id, dto, {
           new: true,
         })
@@ -103,7 +103,7 @@ export class MongooseEntityRepository<
   }
 
   public delete(id: string): Observable<void> {
-    return from(this._model.findByIdAndDelete(id).exec()).pipe(
+    return from(this.model.findByIdAndDelete(id).exec()).pipe(
       map((): void => void 0),
     );
   }

@@ -65,8 +65,10 @@ export const NestApiRelatedResourceResponse = <
   key: TKey,
   options?: ApiResponseOptions,
 ): MethodDecorator => {
-  const descriptor: RelationshipDescriptor<any> =
-    getRelationshipDescriptorByKey(type, key);
+  const descriptor: RelationshipDescriptor = getRelationshipDescriptorByKey(
+    type,
+    key,
+  );
 
   const relatedType: Type = descriptor.related();
   const nullable: boolean | undefined =
@@ -116,8 +118,10 @@ export const NestApiRelationshipResponse = <
   key: TKey,
   options?: ApiResponseOptions,
 ): MethodDecorator => {
-  const descriptor: RelationshipDescriptor<any> =
-    getRelationshipDescriptorByKey(type, key);
+  const descriptor: RelationshipDescriptor = getRelationshipDescriptorByKey(
+    type,
+    key,
+  );
 
   const relatedType: Type = descriptor.related();
   const nullable: boolean | undefined =
