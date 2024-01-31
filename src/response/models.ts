@@ -11,7 +11,10 @@ import { isNotNullOrUndefined } from '../core';
 export type BaseUrl = { scheme: string; host: string; port: number };
 
 export class ResourceResponse<T = unknown> {
-  constructor(public readonly data: T, public readonly included?: unknown[]) {}
+  constructor(
+    public readonly data: T,
+    public readonly included?: unknown[],
+  ) {}
 }
 
 export class ResourcesResponse<T = unknown> {
@@ -23,7 +26,10 @@ export class ResourcesResponse<T = unknown> {
 }
 
 export class RelatedResourceResponse<T = unknown> {
-  constructor(public readonly data: T, public readonly included?: unknown[]) {}
+  constructor(
+    public readonly data: T,
+    public readonly included?: unknown[],
+  ) {}
 }
 
 export class RelatedResourcesResponse<T = unknown> {
@@ -35,7 +41,10 @@ export class RelatedResourcesResponse<T = unknown> {
 }
 
 export class RelationshipResponse<T = unknown> {
-  constructor(public readonly type: Type<T>, public readonly data?: string) {}
+  constructor(
+    public readonly type: Type<T>,
+    public readonly data?: string,
+  ) {}
 }
 
 export class RelationshipsResponse<T = unknown> {

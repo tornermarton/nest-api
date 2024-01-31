@@ -13,9 +13,16 @@ import {
   RelationshipDescriptor,
 } from '../../repository';
 
+type DynamicRepositoryModule = {
+  forFeature: (options: {
+    entities: Type[];
+    relationships: RelationshipDescriptor[];
+  }) => DynamicModule;
+};
+
 type ResourceManagerModuleOptions = {
   resources: Type[];
-  repositoryModule: any;
+  repositoryModule: DynamicRepositoryModule;
 };
 
 @Module({})
@@ -33,9 +40,9 @@ export class ResourceManagerModule {
       }
     });
 
-    const relationshipsMap: Map<string, RelationshipDescriptor<any>> = new Map<
+    const relationshipsMap: Map<string, RelationshipDescriptor> = new Map<
       string,
-      RelationshipDescriptor<any>
+      RelationshipDescriptor
     >();
 
     Array.from(resourcesMap.values())
@@ -90,7 +97,7 @@ export class ResourceManagerModule {
 
     const relationships: RelationshipDescriptor[] = Array.from(
       relationshipsMap.values(),
-    ) as RelationshipDescriptor[];
+    );
 
     const entityTokens: string[] = entities.map((type) =>
       getEntityRepositoryToken(type),
@@ -130,11 +137,9 @@ export class ResourceManagerModule {
 
     return {
       module: ResourceManagerModule,
-      // TODO: remove repository module forFeature call and allow user to define this
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
       imports: [repositoryModule.forFeature({ entities, relationships })],
       providers: [serviceProvider, ...managerProviders],
-      exports: [repositoryModule, serviceProvider, ...managerProviders],
+      exports: [serviceProvider, ...managerProviders],
     };
   }
 }

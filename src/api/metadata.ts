@@ -94,7 +94,7 @@ export function getInverseRelationshipDescriptor<TRelated extends Entity>({
   name,
   related,
   inverse,
-}: RelationshipDescriptor<TRelated>): RelationshipDescriptor<any> | null {
+}: RelationshipDescriptor<TRelated>): RelationshipDescriptor | null {
   if (isNullOrUndefined(inverse)) {
     return null;
   }
@@ -115,7 +115,7 @@ export function getInverseRelationshipDescriptor<TRelated extends Entity>({
 
 export function getRelationshipDescriptors<TResource extends Entity>(
   type: Type<TResource>,
-): RelationshipDescriptor<any>[] {
+): RelationshipDescriptor[] {
   const metadata: NestApiResourceMetadata = getResourceMetadata(type.prototype);
   const { relationships } = metadata.fields;
   const descriptors = relationships.map(({ descriptor }) => descriptor);

@@ -124,30 +124,48 @@ export class ResourceManager<TResource extends Entity = Entity> {
     ) as ResourceRelationshipKey<TResource>[];
   }
 
+  private getRelationshipDefinition<
+    TKey extends ResourceRelationshipKey<TResource>,
+  >(
+    key: TKey,
+  ): ResourceManagerRelationshipDefinition<
+    RelatedResourceType<TResource[TKey]>
+  > {
+    // TODO: proper typing
+    return this.relationships[
+      key
+    ] as unknown as ResourceManagerRelationshipDefinition<
+      RelatedResourceType<TResource[TKey]>
+    >;
+  }
+
   private populateRelationship(
     key: ResourceRelationshipKey<TResource>,
     entity: ResourceEntity<TResource>,
     include: ResourceRelationshipKey<TResource>[] = [],
   ): Observable<{
-    relationships: { [x: string]: string | string[] | undefined };
+    relationships: Record<string, string | string[] | undefined>;
     included: unknown[];
   }> {
     if (include.includes(key)) {
       return this.readRelated(key, entity.id).pipe(
-        map(({ data }) => ({
-          relationships: {
-            [key]: Array.isArray(data)
-              ? data.map(({ id }) => id)
-              : isNotNullOrUndefined(data)
-                ? data.id
-                : undefined,
-          },
-          included: Array.isArray(data)
-            ? data
-            : isNotNullOrUndefined(data)
-              ? [data]
-              : [],
-        })),
+        map(({ data }) => {
+          if (Array.isArray(data)) {
+            const relationships = { [key]: data.map(({ id }) => id) };
+            const included = data;
+
+            return { relationships, included };
+          }
+
+          if (isNotNullOrUndefined(data)) {
+            const relationships = { [key]: data.id };
+            const included = [data];
+
+            return { relationships, included };
+          }
+
+          return { relationships: { [key]: undefined }, included: [] };
+        }),
       );
     } else {
       return this.readRelationship(key, entity.id).pipe(
@@ -166,10 +184,12 @@ export class ResourceManager<TResource extends Entity = Entity> {
     relationships: ResourceRelationships<TResource>;
     included: unknown[];
   }> {
-    return from(this.getRelationshipKeys()).pipe(
+    const relationshipKeys = this.getRelationshipKeys();
+
+    return from(relationshipKeys).pipe(
       map((key) => this.populateRelationship(key, entity, include)),
       toArray(),
-      concatMap((observables) => forkJoin(observables)),
+      concatMap((observables$) => forkJoin(observables$)),
       concatAll(),
       reduce((acc, { relationships, included }) => ({
         relationships: {
@@ -178,16 +198,14 @@ export class ResourceManager<TResource extends Entity = Entity> {
         },
         included: [...acc.included, ...included],
       })),
-      map(({ relationships, included }) => ({
-        // TODO: proper typing
-        relationships:
-          relationships as unknown as ResourceRelationships<TResource>,
-        included: included,
-      })),
       defaultIfEmpty({
-        relationships: {} as ResourceRelationships<TResource>,
+        relationships: {},
         included: [],
       }),
+      map(({ relationships, included }) => ({
+        relationships: relationships as ResourceRelationships<TResource>,
+        included: included,
+      })),
     );
   }
 
@@ -196,16 +214,14 @@ export class ResourceManager<TResource extends Entity = Entity> {
     include: ResourceRelationshipKey<TResource>[] = [],
   ): Observable<{ resource: TResource; included: unknown[] }> {
     return this.populateRelationships(entity, include).pipe(
-      map(({ relationships, included }) => ({
-        resource: plainToInstance(
-          this.resource,
-          { ...entity, ...relationships },
-          {
-            excludeExtraneousValues: true,
-          },
-        ),
-        included,
-      })),
+      map(({ relationships, included }) => {
+        const plain = { ...entity, ...relationships };
+        const resource = plainToInstance(this.resource, plain, {
+          excludeExtraneousValues: true,
+        });
+
+        return { resource, included };
+      }),
     );
   }
 
@@ -213,10 +229,7 @@ export class ResourceManager<TResource extends Entity = Entity> {
     query: IQueryResourcesDto<TResource, TFilter, TInclude>,
     options?: { count: boolean },
   ): Observable<ResourcesResponse<TResource>> {
-    const resources$: Observable<{
-      resources: TResource[];
-      included?: unknown[];
-    }> = this.entity.repository.find(query).pipe(
+    const resources$ = this.entity.repository.find(query).pipe(
       concatAll(),
       concatMap((entity) => this.transform(entity, query.include)),
       reduce(
@@ -231,10 +244,10 @@ export class ResourceManager<TResource extends Entity = Entity> {
       ),
       map(({ resources, included }) => ({
         resources,
-        included: (query.include?.length ?? 0) > 0 ? included : undefined,
+        included: included.length > 0 ? included : undefined,
       })),
     );
-    const count$: Observable<number | undefined> = options?.count
+    const count$ = options?.count
       ? this.entity.repository.count(query)
       : of(undefined);
 
@@ -252,47 +265,44 @@ export class ResourceManager<TResource extends Entity = Entity> {
   ): Observable<void> {
     const relationshipKeys = this.getRelationshipKeys();
 
-    if (relationshipKeys.length < 1) {
-      // must return void, not EMPTY since it is used with delayWhen()
-      return of(void 0);
-    }
+    return from(relationshipKeys).pipe(
+      map(<TKey extends ResourceRelationshipKey<TResource>>(key: TKey) => {
+        const value = dto[key];
 
-    const observables$: Observable<unknown>[] = relationshipKeys.map(
-      <TKey extends ResourceRelationshipKey<TResource>>(key: TKey) => {
-        if (isNullOrUndefined(dto[key])) {
+        if (isNullOrUndefined(value)) {
           return of([]);
         }
 
         // TODO: proper typing
-        const id2set = (Array.isArray(dto[key])
-          ? dto[key]
-          : [dto[key]]) as unknown as TypedId2Set<TResource[TKey]>;
+        const id2set = (Array.isArray(value) ? value : [value]) as TypedId2Set<
+          TResource[TKey]
+        >;
 
         return this.updateRelationship(key, id, id2set, createdBy);
-      },
+      }),
+      toArray(),
+      concatMap((observables$) => forkJoin(observables$)),
+      map(noop),
+      defaultIfEmpty(void 0),
     );
-
-    return forkJoin(observables$).pipe(map(noop));
   }
 
   public create(
     dto: ResourceCreateDto<TResource>,
   ): Observable<ResourceResponse<TResource>> {
-    const relationshipKeys: ResourceRelationshipKey<TResource>[] =
-      this.getRelationshipKeys();
+    const relationshipKeys = this.getRelationshipKeys();
 
-    return this.entity.repository
-      .create(
-        // TODO: proper typing
-        omit(dto, ...relationshipKeys) as unknown as EntityCreateDto<
-          ResourceEntity<TResource>
-        >,
-      )
-      .pipe(
-        delayWhen((entity) => this.updateRelationships(entity, dto)),
-        concatMap((entity) => this.transform(entity)),
-        map(({ resource }) => new ResourceResponse(resource)),
-      );
+    // TODO: proper typing
+    const entityCreateDto = omit(
+      dto,
+      ...relationshipKeys,
+    ) as unknown as EntityCreateDto<ResourceEntity<TResource>>;
+
+    return this.entity.repository.create(entityCreateDto).pipe(
+      delayWhen((entity) => this.updateRelationships(entity, dto)),
+      concatMap((entity) => this.transform(entity)),
+      map(({ resource }) => new ResourceResponse(resource)),
+    );
   }
 
   public read<TInclude extends ResourceRelationshipKey<TResource>>(
@@ -315,25 +325,22 @@ export class ResourceManager<TResource extends Entity = Entity> {
     id: string,
     dto: ResourceUpdateDto<TResource>,
   ): Observable<ResourceResponse<TResource | null>> {
-    const relationshipKeys: ResourceRelationshipKey<TResource>[] =
-      this.getRelationshipKeys();
+    const relationshipKeys = this.getRelationshipKeys();
 
-    return this.entity.repository
-      .update(
-        id,
-        // TODO: proper typing
-        omit(dto, ...relationshipKeys) as unknown as EntityUpdateDto<
-          ResourceEntity<TResource>
-        >,
-      )
-      .pipe(
-        filter(isNotNullOrUndefined),
-        delayWhen((entity) => this.updateRelationships(entity, dto)),
-        concatMap((entity) => this.transform(entity)),
-        map(({ resource }) => resource),
-        defaultIfEmpty(null),
-        map((resource) => new ResourceResponse(resource)),
-      );
+    // TODO: proper typing
+    const entityUpdateDto = omit(
+      dto,
+      ...relationshipKeys,
+    ) as unknown as EntityUpdateDto<ResourceEntity<TResource>>;
+
+    return this.entity.repository.update(id, entityUpdateDto).pipe(
+      filter(isNotNullOrUndefined),
+      delayWhen((entity) => this.updateRelationships(entity, dto)),
+      concatMap((entity) => this.transform(entity)),
+      map(({ resource }) => resource),
+      defaultIfEmpty(null),
+      map((resource) => new ResourceResponse(resource)),
+    );
   }
 
   public delete(id: string): Observable<void> {
@@ -349,16 +356,9 @@ export class ResourceManager<TResource extends Entity = Entity> {
     query: IQueryRelationshipsDto<TFilter>,
     options?: { count: boolean },
   ): Observable<TypedRelatedResponse<TResource[TKey]>> {
-    // TODO: proper typing
-    const definition = this.relationships[
-      key
-    ] as unknown as ResourceManagerRelationshipDefinition<
-      RelatedResourceType<TResource[TKey]>
-    >;
-    const { descriptor, repository } = definition;
+    const { descriptor, repository } = this.getRelationshipDefinition(key);
     const { kind, related } = descriptor;
-    const relatedManager =
-      this.service.get<RelatedResourceType<TResource[TKey]>>(related());
+    const relatedManager = this.service.get(related());
 
     const resources$: Observable<RelatedResourceType<TResource[TKey]>[]> =
       repository.findRelated(id1, query).pipe(
@@ -391,15 +391,9 @@ export class ResourceManager<TResource extends Entity = Entity> {
     id1: string,
     id2set?: TypedId2Set<TResource[TKey]>,
   ): Observable<TypedRelatedResponse<TResource[TKey]>> {
-    // TODO: proper typing
-    const { descriptor, repository } = this.relationships[
-      key
-    ] as unknown as ResourceManagerRelationshipDefinition<
-      RelatedResourceType<TResource[TKey]>
-    >;
+    const { descriptor, repository } = this.getRelationshipDefinition(key);
     const { kind, related } = descriptor;
-    const relatedManager =
-      this.service.get<RelatedResourceType<TResource[TKey]>>(related());
+    const relatedManager = this.service.get(related());
 
     return repository.readRelated(id1, id2set).pipe(
       concatAll(),
@@ -428,8 +422,7 @@ export class ResourceManager<TResource extends Entity = Entity> {
     query: IQueryRelationshipsDto<TFilter>,
     options?: { count: boolean },
   ): Observable<TypedRelationshipResponse<TResource[TKey]>> {
-    // TODO: proper typing
-    const { descriptor, repository } = this.relationships[key];
+    const { descriptor, repository } = this.getRelationshipDefinition(key);
     const { kind, related } = descriptor;
 
     const ids$: Observable<string[]> = repository.find(id1, query).pipe(
@@ -462,8 +455,7 @@ export class ResourceManager<TResource extends Entity = Entity> {
     id2set: TypedId2Set<TResource[TKey]>,
     createdBy: string,
   ): Observable<TypedRelationshipResponse<TResource[TKey]>> {
-    // TODO: proper typing
-    const { descriptor, repository } = this.relationships[key];
+    const { descriptor, repository } = this.getRelationshipDefinition(key);
     const { kind, related } = descriptor;
 
     return repository.create(id1, id2set, createdBy).pipe(
@@ -488,8 +480,7 @@ export class ResourceManager<TResource extends Entity = Entity> {
     id1: string,
     id2set?: TypedId2Set<TResource[TKey]>,
   ): Observable<TypedRelationshipResponse<TResource[TKey]>> {
-    // TODO: proper typing
-    const { descriptor, repository } = this.relationships[key];
+    const { descriptor, repository } = this.getRelationshipDefinition(key);
     const { kind, related } = descriptor;
 
     return repository.read(id1, id2set).pipe(
@@ -515,8 +506,7 @@ export class ResourceManager<TResource extends Entity = Entity> {
     id2set: TypedId2Set<TResource[TKey]>,
     createdBy: string,
   ): Observable<TypedRelationshipResponse<TResource[TKey]>> {
-    // TODO: proper typing
-    const { descriptor, repository } = this.relationships[key];
+    const { descriptor, repository } = this.getRelationshipDefinition(key);
     const { kind, related } = descriptor;
 
     return repository.update(id1, id2set, createdBy).pipe(
@@ -541,8 +531,7 @@ export class ResourceManager<TResource extends Entity = Entity> {
     id1: string,
     id2set?: TypedId2Set<TResource[TKey]>,
   ): Observable<void> {
-    // TODO: proper typing
-    const { repository } = this.relationships[key];
+    const { repository } = this.getRelationshipDefinition(key);
 
     return repository.delete(id1, id2set);
   }
