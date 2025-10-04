@@ -1,10 +1,4 @@
-import {
-  Controller,
-  Get,
-  HttpException,
-  HttpStatus,
-  ServiceUnavailableException,
-} from '@nestjs/common';
+import { Controller, Get, HttpException, HttpStatus } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import {
   DiskHealthIndicator,
@@ -20,10 +14,9 @@ import { map } from 'rxjs/operators';
 import { Health } from './schemas/health.schema';
 import {
   NestApiResourceResponse,
-  NestApiErrorInterface,
   NestApiServiceUnavailableResponse,
 } from '../../api';
-import { isNotNullOrUndefined, uuid } from '../../core';
+import { NestApiServiceUnavailableException, uuid } from '../../core';
 
 @ApiTags('health')
 @Controller('health')
@@ -67,32 +60,31 @@ export class HealthController {
           throw error;
         }
 
-        const response: string | object = error.getResponse();
+        const response = error.getResponse();
 
-        if (typeof response !== 'object' || !('error' in response)) {
+        if (typeof response === 'string') {
           throw error;
         }
 
-        const errors: NestApiErrorInterface[] = Object.entries(
-          (response as HealthCheckResult).error ?? {},
-        ).map(([name, obj]) => {
-          let detail: string | undefined = undefined;
+        if (!('error' in response)) {
+          throw error;
+        }
 
-          if (
-            isNotNullOrUndefined(obj['message']) &&
-            typeof obj['message'] === 'string'
-          ) {
-            detail = obj['message'];
+        const result = (response as HealthCheckResult).error ?? {};
+        const errors = Object.entries(result).map(([name, obj]) => {
+          const status = HttpStatus.SERVICE_UNAVAILABLE;
+          const title = `Service [${name}] unavailable`;
+
+          if ('message' in obj && typeof obj['message'] === 'string') {
+            const detail = obj['message'];
+
+            return { status, title, detail };
           }
 
-          return {
-            status: HttpStatus.SERVICE_UNAVAILABLE,
-            title: `Service [${name}] unavailable`,
-            detail: detail,
-          };
+          return { status, title };
         });
 
-        throw new ServiceUnavailableException({ errors });
+        throw new NestApiServiceUnavailableException(errors);
       }),
     );
   }

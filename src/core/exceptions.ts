@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus, Type } from '@nestjs/common';
+import { HttpException, HttpStatus } from '@nestjs/common';
 import { getReasonPhrase } from 'http-status-codes';
 
 import { NestApiErrorInterface } from '../api';
@@ -19,18 +19,24 @@ export class InvalidDecoratedPropertyException extends NestApiException {}
 
 export class InvalidIdSetException extends NestApiException {}
 
+type NestApiErrorOrErrors =
+  | string
+  | NestApiErrorInterface
+  | NestApiErrorInterface[];
 export class NestApiHttpException extends HttpException {
   public readonly errors: NestApiErrorInterface[];
 
   constructor(
-    errorOrErrors: NestApiErrorInterface | NestApiErrorInterface[],
     status: number,
+    errorOrErrors: NestApiErrorOrErrors,
     cause?: unknown,
   ) {
-    const reason: string = getReasonPhrase(status);
-    const errors: NestApiErrorInterface[] = Array.isArray(errorOrErrors)
+    const reason = getReasonPhrase(status);
+    const errors = Array.isArray(errorOrErrors)
       ? errorOrErrors
-      : [errorOrErrors];
+      : typeof errorOrErrors === 'string'
+        ? [{ status: status, title: reason, detail: errorOrErrors }]
+        : [errorOrErrors];
 
     super({ errors, message: reason }, status, { cause });
 
@@ -38,42 +44,43 @@ export class NestApiHttpException extends HttpException {
   }
 }
 
-function NestApiHttpExceptionWithStatus(
-  status: number,
-): Type<NestApiHttpException> {
-  class NestApiHttpExceptionClass extends NestApiHttpException {
-    constructor(
-      errorOrErrors: NestApiErrorInterface | NestApiErrorInterface[],
-      cause?: unknown,
-    ) {
-      super(errorOrErrors, status, cause);
-    }
+export class NestApiBadRequestException extends NestApiHttpException {
+  constructor(errorOrErrors: NestApiErrorOrErrors, cause?: unknown) {
+    super(HttpStatus.BAD_REQUEST, errorOrErrors, cause);
   }
-
-  return NestApiHttpExceptionClass;
 }
-
-export class NestApiBadRequestException extends NestApiHttpExceptionWithStatus(
-  HttpStatus.BAD_REQUEST,
-) {}
-export class NestApiUnauthorizedException extends NestApiHttpExceptionWithStatus(
-  HttpStatus.UNAUTHORIZED,
-) {}
-export class NestApiForbiddenException extends NestApiHttpExceptionWithStatus(
-  HttpStatus.FORBIDDEN,
-) {}
-export class NestApiNotFoundException extends NestApiHttpExceptionWithStatus(
-  HttpStatus.NOT_FOUND,
-) {}
-export class NestApiUnprocessableEntityException extends NestApiHttpExceptionWithStatus(
-  HttpStatus.UNPROCESSABLE_ENTITY,
-) {}
-export class NestApiInternalServerErrorException extends NestApiHttpExceptionWithStatus(
-  HttpStatus.INTERNAL_SERVER_ERROR,
-) {}
-export class NestApiNotImplementedException extends NestApiHttpExceptionWithStatus(
-  HttpStatus.NOT_IMPLEMENTED,
-) {}
-export class NestApiServiceUnavailableException extends NestApiHttpExceptionWithStatus(
-  HttpStatus.SERVICE_UNAVAILABLE,
-) {}
+export class NestApiUnauthorizedException extends NestApiHttpException {
+  constructor(errorOrErrors: NestApiErrorOrErrors, cause?: unknown) {
+    super(HttpStatus.UNAUTHORIZED, errorOrErrors, cause);
+  }
+}
+export class NestApiForbiddenException extends NestApiHttpException {
+  constructor(errorOrErrors: NestApiErrorOrErrors, cause?: unknown) {
+    super(HttpStatus.FORBIDDEN, errorOrErrors, cause);
+  }
+}
+export class NestApiNotFoundException extends NestApiHttpException {
+  constructor(errorOrErrors: NestApiErrorOrErrors, cause?: unknown) {
+    super(HttpStatus.NOT_FOUND, errorOrErrors, cause);
+  }
+}
+export class NestApiUnprocessableEntityException extends NestApiHttpException {
+  constructor(errorOrErrors: NestApiErrorOrErrors, cause?: unknown) {
+    super(HttpStatus.UNPROCESSABLE_ENTITY, errorOrErrors, cause);
+  }
+}
+export class NestApiInternalServerErrorException extends NestApiHttpException {
+  constructor(errorOrErrors: NestApiErrorOrErrors, cause?: unknown) {
+    super(HttpStatus.INTERNAL_SERVER_ERROR, errorOrErrors, cause);
+  }
+}
+export class NestApiNotImplementedException extends NestApiHttpException {
+  constructor(errorOrErrors: NestApiErrorOrErrors, cause?: unknown) {
+    super(HttpStatus.NOT_IMPLEMENTED, errorOrErrors, cause);
+  }
+}
+export class NestApiServiceUnavailableException extends NestApiHttpException {
+  constructor(errorOrErrors: NestApiErrorOrErrors, cause?: unknown) {
+    super(HttpStatus.SERVICE_UNAVAILABLE, errorOrErrors, cause);
+  }
+}

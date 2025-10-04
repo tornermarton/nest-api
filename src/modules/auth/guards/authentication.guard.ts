@@ -1,13 +1,8 @@
-import {
-  CanActivate,
-  ExecutionContext,
-  Injectable,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
 
-import { isUndefined } from '../../../core';
+import { isUndefined, NestApiUnauthorizedException } from '../../../core';
 import { AUTH_PASSPORT_HEADER } from '../constants';
 import { Passport } from '../interfaces';
 
@@ -27,15 +22,18 @@ export class AuthenticationGuard implements CanActivate {
     const token: string | undefined = this.getPassportFromRequest(request);
 
     if (isUndefined(token)) {
-      throw new UnauthorizedException('Authentication passport header missing');
+      throw new NestApiUnauthorizedException(
+        'Authentication passport header missing',
+      );
     }
 
     try {
       request['user'] = this.jwtService.verify<Passport>(token);
     } catch (cause) {
-      throw new UnauthorizedException('Authentication passport malformed', {
+      throw new NestApiUnauthorizedException(
+        'Authentication passport malformed',
         cause,
-      });
+      );
     }
 
     return true;

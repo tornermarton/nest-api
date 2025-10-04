@@ -95,11 +95,14 @@ class MongooseRepositoryCoreModule {
   ): DynamicModule {
     const providers: FactoryProvider[] = [];
 
+    const { host, port, replicaSet, database, username, password } =
+      options.connection;
+
     return {
       module: MongooseRepositoryCoreModule,
       imports: [
         MongooseModule.forRoot(
-          `mongodb://${options.connection.username}:${options.connection.password}@${options.connection.host}:${options.connection.port}/${options.connection.database}?authMechanism=DEFAULT&authSource=${options.connection.database}&replicaSet=${options.connection.replicaSet}`,
+          `mongodb://${username}:${password}@${host}:${port}/${database}?authMechanism=DEFAULT&authSource=${database}&replicaSet=${replicaSet}`,
         ),
       ],
       providers: providers,
